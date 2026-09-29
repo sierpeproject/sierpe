@@ -1,9 +1,10 @@
 # Sierpe
 
-> **Status: v1.5.2.** The design is stable
+> **Status: v1.10.2.** The design is stable
 > ([docs/DESIGN.md](docs/DESIGN.md)); events, contract state, token
 > transfers, trustlines and token movements are feature-complete and run
-> in production against testnet. Issues and feedback are welcome.
+> in production against mainnet — including archive replay of history
+> beyond RPC retention. Issues and feedback are welcome.
 
 **Your own Stellar indexer, deployed in minutes.**
 
@@ -34,8 +35,9 @@ them, backfills them, and follows the tip.
   Runs the same on Railway, AWS, GCP, or a $5 VPS. Target cost for a typical
   project: under $10/month.
 - **History past the RPC window.** Stellar RPCs retain ~7 days of events.
-  Sierpe backfills from genesis where sources allow, and is designed to
-  replay History Archives for ranges no RPC serves at all.
+  Sierpe backfills from genesis where sources allow, and replays History
+  Archives for ranges no RPC serves at all (the `-full` image), gated by
+  a byte-equivalence proof against the RPC.
 - **Contract state, not just events.** Storage entry changes and current
   snapshots — the data most event indexers ignore.
 - **Honest by construction.** Coverage and gaps are first-class data,
@@ -64,7 +66,7 @@ them, backfills them, and follows the tip.
   changes.
 - [SECURITY.md](SECURITY.md) — how to report vulnerabilities.
 
-## Quickstart (M2: events and state end-to-end)
+## Quickstart
 
 Requirements: Docker (or Go 1.25+) and an empty Postgres — see [docs/DEPLOY.md](docs/DEPLOY.md).
 
@@ -112,7 +114,8 @@ are documented in [docs/METRICS.md](docs/METRICS.md).
 | v1.3 ✅ | Embedded management UI at `/` and the contract listing endpoint |
 | v1.4 ✅ | Optional whole-surface Basic Auth for public-domain deployments |
 | v1.5 ✅ | Token movements (transfers a contract takes part in, whoever emitted them) and per-kind coverage |
-| v1.6 | Contract-class discovery: register a wasm hash, index every contract deployed from it |
+| v1.6–v1.10 ✅ | Mainnet hardening: shared backfill scans, gap trimming and rewind doctrine, sparse heal plans with parallel workers, raw movement XDR, archived-contract registration |
+| Next | Contract-class discovery: register a wasm hash, index every contract deployed from it |
 | v2 | Push delivery: signed webhooks, broker sinks; MCP server under exploration |
 
 ## License
