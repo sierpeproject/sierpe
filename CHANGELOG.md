@@ -6,6 +6,14 @@ All notable changes to Sierpe are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- `google.golang.org/grpc` upgraded 1.82.1 → 1.83.1: clears GO-2026-6348,
+  which the unpinned `govulncheck@latest` reported as reachable and failed
+  every CI run regardless of the diff — the scan doing exactly the job it
+  was left unpinned to do. The `google.golang.org` and OpenTelemetry
+  modules grpc requires moved with it; all indirect, no code changes.
+
 ## [1.10.2] - 2026-09-10
 
 ### Fixed
