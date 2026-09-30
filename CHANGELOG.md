@@ -6,6 +6,16 @@ All notable changes to Sierpe are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `include=rawXdr` on `GET /v1/contracts/{id}/events`: every event gains a
+  `rawXdr` field carrying the stored ContractEvent, base64 — the original
+  bytes, for consumers that re-emit events into their own pipelines and
+  need the envelope rather than our decode (movements have served theirs
+  since v1.6.0). The parameter is presentation only: accepted beside a
+  cursor, never encoded in one, and without it the response does not
+  change by a byte. An unknown `include` value is a 400.
+
 ### Security
 
 - `google.golang.org/grpc` upgraded 1.82.1 → 1.83.1: clears GO-2026-6348,

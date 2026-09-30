@@ -100,6 +100,12 @@ type eventRecord struct {
 	TxIndex                  int32    `json:"txIndex"`
 	OpIndex                  int32    `json:"opIndex"`
 	EventName                string   `json:"eventName,omitempty"`
+	// RawXDR is the stored ContractEvent, base64, served only under
+	// include=rawXdr: getEvents has no such field, so the default page must
+	// not change by a byte. It never gets a decoded sibling — stellar-xdr's
+	// serde for envelopes has changed between versions, so only the ScVal
+	// fields inside it have a promised JSON shape.
+	RawXDR string `json:"rawXdr,omitempty"`
 }
 
 type eventsResponse struct {
@@ -118,6 +124,11 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	contractID := contract.ContractID
 
 	q, err := s.buildQuery(r, contractID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	includeRaw, err := includeRawXDR(r)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -151,7 +162,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		LatestLedger: cursorSeq,
 	}
 	for _, e := range events {
-		resp.Events = append(resp.Events, eventRecord{
+		rec := eventRecord{
 			ID:                       e.ID,
 			Type:                     "contract",
 			Ledger:                   e.LedgerSequence,
@@ -164,9 +175,28 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 			TxIndex:                  e.TxIndex,
 			OpIndex:                  e.OpIndex,
 			EventName:                e.EventName,
-		})
+		}
+		if includeRaw {
+			rec.RawXDR = e.RawXDR
+		}
+		resp.Events = append(resp.Events, rec)
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// includeRawXDR reads the include parameter. It is presentation only: it
+// changes what a page carries per row, never which rows the page holds, so
+// it is accepted beside a cursor, never encoded in one, and the client
+// repeats it on every page.
+func includeRawXDR(r *http.Request) (bool, error) {
+	switch v := r.URL.Query().Get("include"); v {
+	case "":
+		return false, nil
+	case "rawXdr":
+		return true, nil
+	default:
+		return false, fmt.Errorf("include %q is not supported (the only value is rawXdr)", v)
+	}
 }
 
 // buildQuery assembles the effective query from either the cursor (which
