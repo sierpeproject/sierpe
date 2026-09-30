@@ -63,6 +63,7 @@ func movementsOf(t store.Transfer, rawXDR string, watch *registry.Snapshot) []st
 			Counterparty:    counterparty,
 			Amount:          t.Amount,
 			RawXDR:          rawXDR,
+			TxHash:          t.TxHash,
 			LedgerSequence:  t.LedgerSequence,
 			ClosedAt:        t.ClosedAt,
 		})

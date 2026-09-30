@@ -38,7 +38,11 @@ type movementRecord struct {
 	// the original bytes, since the emitting token is usually not
 	// registered and no events row exists to join to. Empty only for rows
 	// ingested before migration 0011.
-	RawXDR         string `json:"rawXdr,omitempty"`
+	RawXDR string `json:"rawXdr,omitempty"`
+	// TxHash is the hex hash of the transaction the movement's event was
+	// emitted in. Absent on rows derived before migration 0013 that the
+	// tx-hash reconciliation (admin op) has not reached yet.
+	TxHash         string `json:"txHash,omitempty"`
 	Ledger         uint32 `json:"ledger"`
 	LedgerClosedAt string `json:"ledgerClosedAt"`
 }
@@ -167,6 +171,7 @@ func (s *Server) handleMovements(w http.ResponseWriter, r *http.Request, movemen
 			Counterparty:    m.Counterparty,
 			Amount:          m.Amount,
 			RawXDR:          m.RawXDR,
+			TxHash:          m.TxHash,
 			Ledger:          m.LedgerSequence,
 			LedgerClosedAt:  m.ClosedAt.UTC().Format(time.RFC3339),
 		})

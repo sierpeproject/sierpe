@@ -152,6 +152,45 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /v1/admin/movements/tx-hashes:
+    post:
+      tags: [admin]
+      summary: Reconcile the tx_hash column of movements
+      description: |
+        Fills tx_hash on movement rows derived before migration 0013. Two
+        local passes run first, over rows this database already trusts: the
+        transfers row sharing the event identity, then any events row of
+        the same transaction. Up to limit remaining transactions are then
+        resolved from the history archives — the permanent record, far
+        below any RPC or Horizon retention, and no captive core involved:
+        the checkpoint results files pair every transaction hash with its
+        ledger in application order.
+
+        Idempotent: every statement only fills NULLs, so repeat the POST
+        freely until done is true. A checkpoint the archives have not
+        published yet (very recent rows) resolves on a later call.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TxHashReconcileRequest" }
+            example: { limit: 200 }
+      responses:
+        "200":
+          description: One reconciliation round; counts are rows.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TxHashReconcileResult" }
+              example:
+                resolved_from_transfers: 0
+                resolved_from_events: 1153
+                resolved_from_archives: 400
+                failed_transactions: 0
+                done: false
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /v1/contracts/{id}:
     delete:
       tags: [admin]
@@ -888,6 +927,12 @@ components:
             from — the original bytes, since the emitting token is usually
             not registered and no events row exists to join to. Absent only
             on rows ingested before migration 0011.
+        txHash:
+          type: string
+          description: >
+            Hex hash of the transaction the movement's event was emitted
+            in. Absent only on rows derived before migration 0013 that the
+            tx-hash reconciliation has not reached yet.
         ledger: { type: integer }
         ledgerClosedAt: { type: string, format: date-time }
 
@@ -946,6 +991,32 @@ components:
         deferred_gaps: { type: integer, description: Open gaps deliberately not replayed. }
         replay_ledgers: { type: integer }
         deferred_ledgers: { type: integer }
+
+    TxHashReconcileRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 200
+          description: >
+            How many transactions this call resolves from the archives; the
+            local passes always run in full. Repeat the POST until done.
+
+    TxHashReconcileResult:
+      type: object
+      properties:
+        resolved_from_transfers: { type: integer, description: Rows filled by the transfers join. }
+        resolved_from_events: { type: integer, description: Rows filled by the same-transaction events join. }
+        resolved_from_archives: { type: integer, description: Rows filled from checkpoint results files. }
+        failed_transactions:
+          type: integer
+          description: Transactions this round could not resolve; they stay NULL for the next call.
+        first_failure: { type: string, description: The first resolver failure, verbatim. }
+        done:
+          type: boolean
+          description: True when no movement misses its tx_hash anymore; false means POST again.
 
     Status:
       type: object

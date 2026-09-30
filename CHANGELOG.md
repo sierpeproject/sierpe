@@ -4,6 +4,27 @@ All notable changes to Sierpe are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- Movements carry `txHash` (migration 0013). The movement id encodes
+  (ledger, tx_index, event_index) but not the hash, and consumers keying
+  on (network, contract_id, tx_hash, event_index) could not build that
+  key from a movement alone. New rows carry it from derivation — the
+  decoded transfer always had it in hand — and rows from before the
+  migration are filled by the new `POST /v1/admin/movements/tx-hashes`:
+  two local passes over rows the database already trusts (the transfers
+  row sharing the event identity, then any events row of the same
+  transaction), and the remainder resolved from the history archives,
+  whose checkpoint results files pair every transaction hash with its
+  ledger in application order. The archives are the permanent record, so
+  this works arbitrarily far below RPC retention — the SDF public
+  Horizon, by contrast, keeps weeks — and needs no captive core and no
+  replay. The op is idempotent (only ever fills NULLs) and paced by the
+  caller: it resolves up to `limit` transactions per call and reports
+  `done`; repeat the POST until it is.
+
 ## [1.11.0] - 2026-09-30
 
 ### Added

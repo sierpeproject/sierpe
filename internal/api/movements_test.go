@@ -42,6 +42,7 @@ func sampleMovement(id, role string) store.Movement {
 		Counterparty:    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		Amount:          "690000000",
 		RawXDR:          "cmF3LWV2ZW50LXhkcg==",
+		TxHash:          "beefcafe00",
 		LedgerSequence:  5500,
 		ClosedAt:        time.Unix(1_700_000_000, 0).UTC(),
 	}
@@ -72,6 +73,9 @@ func TestMovementsHappyPath(t *testing.T) {
 	}
 	if m.RawXDR != "cmF3LWV2ZW50LXhkcg==" {
 		t.Errorf("rawXdr = %q, want the stored event bytes", m.RawXDR)
+	}
+	if m.TxHash != "beefcafe00" {
+		t.Errorf("txHash = %q, want the stored transaction hash", m.TxHash)
 	}
 	if resp.ScanStatus != scanHasMore {
 		t.Errorf("scanStatus = %s", resp.ScanStatus)
