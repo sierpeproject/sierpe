@@ -88,9 +88,25 @@ Hard rules:
   byte-equivalence proof against the RPC (after normalizing diagnostic
   events and change-unit ordering — both unstable run to run even on the
   same core build). Verified end to end on testnet.
-- Roadmap: v1.x batch state query, getEvents v2 facade; v2 push delivery
-  and management UI. Railway template still needs the maintainer's
-  account.
+- **v1.3–v1.10.2 released (through 2026-09-10)**: embedded UI, optional
+  whole-surface Basic Auth, token movements with per-kind coverage,
+  movement raw XDR, sparse heal planning with deferred gaps, and the
+  fixes the 1,285-contract mainnet pilot exposed — CHANGELOG.md has the
+  cuts. The Railway template is published (docs/RAILWAY-TEMPLATE.md is
+  the runbook; bump its image pin every release).
+- **v1.11.0 released (2026-09-30)**: `include=rawXdr` on `/events` serves
+  the stored ContractEvent beside the decoded row. Presentation only:
+  default responses stay byte-identical and cursors never carry it.
+- **v1.12.0 released (2026-09-30)**: movements carry `tx_hash`; rows from
+  before migration 0013 reconcile through
+  `POST /v1/admin/movements/tx-hashes` — local joins over rows the
+  database already trusts, the remainder from the history archives'
+  application-order results files (`internal/txhash`), no replay and no
+  captive core. Run live on the pilot: 6,211/6,211 rows filled, zero
+  failures, one round. Note: the SDF public Horizon now retains weeks of
+  history, not years — the archives are the only permanent free source.
+- Roadmap: rederive subcommand (#88), TTL evictions (#89), TTL liveness
+  (#90), batch state query, getEvents v2 facade; v2 push delivery.
 
 ## Product decisions (do not re-litigate; see DESIGN.md for the why)
 
