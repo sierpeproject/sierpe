@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -218,6 +219,75 @@ func TestEventsCursorRoundTrip(t *testing.T) {
 	}
 	if q.AfterID != "0000000000000000100-0000000000" {
 		t.Errorf("cursor resume position = %q", q.AfterID)
+	}
+}
+
+func TestEventsRawXDRIsOptIn(t *testing.T) {
+	ev := &fakeEventReader{
+		events: []store.Event{sampleEvent("0000000000000000100-0000000000", 5000)},
+		cursor: store.Cursor{Sequence: 6000},
+	}
+	srv := newTestAPI(ev, defaultContractReader())
+	defer srv.Close()
+	base := srv.URL + "/v1/contracts/" + registered + "/events"
+
+	// The default page carries no rawXdr key at all: getEvents has no such
+	// field, and the default body must not change by a byte.
+	resp, err := http.Get(base)
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if strings.Contains(string(body), "rawXdr") {
+		t.Errorf("default body leaks rawXdr: %s", body)
+	}
+
+	// include=rawXdr serves the stored ContractEvent verbatim.
+	var page eventsResponse
+	if code := getJSON(t, base+"?include=rawXdr", &page); code != 200 {
+		t.Fatalf("status = %d", code)
+	}
+	if len(page.Events) != 1 || page.Events[0].RawXDR != "AAAAAQ==" {
+		t.Errorf("events = %+v, want rawXdr AAAAAQ==", page.Events)
+	}
+
+	// An unknown include value is a 400, never silence.
+	if code := getJSON(t, base+"?include=bogus", nil); code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 for unknown include", code)
+	}
+}
+
+func TestEventsRawXDRIsPresentationOnly(t *testing.T) {
+	ev := &fakeEventReader{
+		events:  []store.Event{sampleEvent("0000000000000000100-0000000000", 2500)},
+		hasMore: true,
+		cursor:  store.Cursor{Sequence: 6000},
+	}
+	srv := newTestAPI(ev, defaultContractReader())
+	defer srv.Close()
+	base := srv.URL + "/v1/contracts/" + registered + "/events"
+
+	// The cursor minted is the same with and without the parameter: it
+	// never enters the codec.
+	var plain, withRaw eventsResponse
+	if code := getJSON(t, base+"?limit=1", &plain); code != 200 {
+		t.Fatalf("status = %d", code)
+	}
+	if code := getJSON(t, base+"?limit=1&include=rawXdr", &withRaw); code != 200 {
+		t.Fatalf("status = %d", code)
+	}
+	if plain.Cursor != withRaw.Cursor {
+		t.Errorf("cursor differs by presentation: %q vs %q", plain.Cursor, withRaw.Cursor)
+	}
+
+	// And it is accepted beside a cursor, like any presentation parameter.
+	var next eventsResponse
+	if code := getJSON(t, base+"?cursor="+plain.Cursor+"&include=rawXdr", &next); code != 200 {
+		t.Fatalf("cursor page status = %d", code)
+	}
+	if len(next.Events) != 1 || next.Events[0].RawXDR == "" {
+		t.Errorf("cursor page lost rawXdr: %+v", next.Events)
 	}
 }
 

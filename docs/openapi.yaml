@@ -223,6 +223,14 @@ paths:
           in: query
           schema: { type: string }
           description: Opaque page cursor from a previous response.
+        - name: include
+          in: query
+          schema: { type: string, enum: [rawXdr] }
+          description: |
+            Presentation only — accepted beside a cursor, never encoded in
+            one; repeat it on every page. rawXdr adds the stored
+            ContractEvent (base64) to every event. Sierpe extension; the
+            default response is unchanged.
       responses:
         "200":
           description: One page of events with scan status and coverage.
@@ -689,6 +697,11 @@ components:
         eventName:
           type: string
           description: topic0 symbol when decodable. Sierpe extension.
+        rawXdr:
+          type: string
+          description: |
+            Full ContractEvent, base64. Present only under include=rawXdr.
+            Sierpe extension.
 
     EventsPage:
       type: object
