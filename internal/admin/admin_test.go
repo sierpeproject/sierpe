@@ -121,8 +121,68 @@ func newTestServerWithHeal(st *fakeStore, planner *fakePlanner, heal *fakeHealPl
 	reg *fakeReloader, cls *fakeClassifier) *httptest.Server {
 	mux := http.NewServeMux()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	NewServer("testnet", testToken, st, planner, heal, reg, cls, log).Register(mux)
+	NewServer("testnet", testToken, st, planner, heal, reg, cls,
+		&fakeTxHasher{}, &fakeToidResolver{}, log).Register(mux)
 	return httptest.NewServer(mux)
+}
+
+func newTestServerWithTxHashes(hasher *fakeTxHasher, resolver *fakeToidResolver) *httptest.Server {
+	mux := http.NewServeMux()
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	NewServer("testnet", testToken, &fakeStore{}, &fakePlanner{}, &fakeHealPlanner{},
+		&fakeReloader{}, &fakeClassifier{}, hasher, resolver, log).Register(mux)
+	return httptest.NewServer(mux)
+}
+
+// fakeTxHasher scripts the movements tx-hash reconciliation store: gaps
+// drain as stamps land, mimicking the fill-NULLs-only semantics.
+type fakeTxHasher struct {
+	fromTransfers, fromEvents int64
+	gaps                      []string
+	rowsPerStamp              int64
+	stamped                   map[string]string
+}
+
+func (f *fakeTxHasher) ResolveMovementTxHashesLocal(context.Context, string) (int64, int64, error) {
+	return f.fromTransfers, f.fromEvents, nil
+}
+
+func (f *fakeTxHasher) ListMovementTxHashGaps(_ context.Context, _ string, limit int) ([]string, error) {
+	var out []string
+	for _, toid := range f.gaps {
+		if _, done := f.stamped[toid]; done {
+			continue
+		}
+		out = append(out, toid)
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeTxHasher) SetMovementTxHash(_ context.Context, _ string, toid, txHash string) (int64, error) {
+	if f.stamped == nil {
+		f.stamped = make(map[string]string)
+	}
+	f.stamped[toid] = txHash
+	return f.rowsPerStamp, nil
+}
+
+// fakeToidResolver answers from a canned map and can fail on top.
+type fakeToidResolver struct {
+	hashes map[string]string
+	err    error
+}
+
+func (f *fakeToidResolver) Resolve(_ context.Context, toids []string) (map[string]string, error) {
+	out := make(map[string]string)
+	for _, toid := range toids {
+		if h, ok := f.hashes[toid]; ok {
+			out[toid] = h
+		}
+	}
+	return out, f.err
 }
 
 func newTestServer(st *fakeStore, reg *fakeReloader, cls *fakeClassifier) *httptest.Server {
@@ -618,5 +678,94 @@ func TestPlanRequiresTheAdminToken(t *testing.T) {
 	}
 	if heal.calls != 0 {
 		t.Error("an unauthenticated plan must never reach the store")
+	}
+}
+
+func TestTxHashReconciliation(t *testing.T) {
+	hasher := &fakeTxHasher{
+		fromTransfers: 3, fromEvents: 2, rowsPerStamp: 2,
+		gaps: []string{"0000000000000000100", "0000000000000000200"},
+	}
+	resolver := &fakeToidResolver{hashes: map[string]string{
+		"0000000000000000100": "aa", "0000000000000000200": "bb",
+	}}
+	srv := newTestServerWithTxHashes(hasher, resolver)
+	defer srv.Close()
+
+	resp := doRequest(t, "POST", srv.URL+"/v1/admin/movements/tx-hashes", testToken, "")
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	var out txHashResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.ResolvedFromTransfers != 3 || out.ResolvedFromEvents != 2 {
+		t.Errorf("local passes = %d/%d, want 3/2", out.ResolvedFromTransfers, out.ResolvedFromEvents)
+	}
+	// Two transactions stamped at two rows each.
+	if out.ResolvedFromArchives != 4 {
+		t.Errorf("resolved_from_archives = %d, want 4", out.ResolvedFromArchives)
+	}
+	if out.FailedTransactions != 0 || out.FirstFailure != "" {
+		t.Errorf("failures = %d %q, want none", out.FailedTransactions, out.FirstFailure)
+	}
+	if !out.Done {
+		t.Error("every gap resolved: done must be true")
+	}
+	if hasher.stamped["0000000000000000100"] != "aa" || hasher.stamped["0000000000000000200"] != "bb" {
+		t.Errorf("stamped = %+v", hasher.stamped)
+	}
+}
+
+func TestTxHashReconciliationReportsFailuresAndStaysUndone(t *testing.T) {
+	hasher := &fakeTxHasher{
+		rowsPerStamp: 1,
+		gaps:         []string{"0000000000000000100", "0000000000000000200"},
+	}
+	resolver := &fakeToidResolver{
+		hashes: map[string]string{"0000000000000000100": "aa"},
+		err:    errors.New("results file for checkpoint 63 not published yet"),
+	}
+	srv := newTestServerWithTxHashes(hasher, resolver)
+	defer srv.Close()
+
+	resp := doRequest(t, "POST", srv.URL+"/v1/admin/movements/tx-hashes", testToken, `{"limit": 10}`)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	var out txHashResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.ResolvedFromArchives != 1 || out.FailedTransactions != 1 {
+		t.Errorf("archives/failed = %d/%d, want 1/1", out.ResolvedFromArchives, out.FailedTransactions)
+	}
+	if out.FirstFailure == "" {
+		t.Error("the resolver error must surface in first_failure")
+	}
+	if out.Done {
+		t.Error("an unresolved gap remains: done must be false")
+	}
+}
+
+func TestTxHashReconciliationValidatesTheBody(t *testing.T) {
+	srv := newTestServerWithTxHashes(&fakeTxHasher{}, &fakeToidResolver{})
+	defer srv.Close()
+
+	for _, body := range []string{`{"limit": -1}`, `{"limit": 5000}`, `{"nope": 1}`} {
+		resp := doRequest(t, "POST", srv.URL+"/v1/admin/movements/tx-hashes", testToken, body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("body %s: status = %d, want 400", body, resp.StatusCode)
+		}
+	}
+
+	resp := doRequest(t, "POST", srv.URL+"/v1/admin/movements/tx-hashes", "wrong-token", "")
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("wrong token: status = %d, want 401", resp.StatusCode)
 	}
 }

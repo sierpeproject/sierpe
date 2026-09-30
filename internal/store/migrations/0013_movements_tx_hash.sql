@@ -1,0 +1,12 @@
+-- v1.12: movements carry the transaction hash of the underlying event.
+--
+-- The movement id encodes (ledger, tx_index, event_index) but not the
+-- hash, and downstream consumers keying on (network, contract_id,
+-- tx_hash, event_index) could not build that key from a movement alone.
+-- Transfers and events always carried tx_hash; movements now do too.
+--
+-- Nullable: rows derived before this migration are filled by the
+-- reconciliation op (POST /v1/admin/movements/tx-hashes) — first from
+-- rows this database already trusts, then from the public history
+-- archives, never by replay. New rows always carry it.
+ALTER TABLE movements ADD COLUMN tx_hash text;

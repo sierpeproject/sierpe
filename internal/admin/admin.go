@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"net/http"
@@ -74,6 +75,21 @@ type reloader interface {
 	Reload(ctx context.Context) error
 }
 
+// movementTxHasher reconciles the tx_hash column of movements (migration
+// 0013): local passes over rows the database already trusts, then a gap
+// list the archive resolver works through, stamped per transaction.
+type movementTxHasher interface {
+	ResolveMovementTxHashesLocal(ctx context.Context, network string) (fromTransfers, fromEvents int64, err error)
+	ListMovementTxHashGaps(ctx context.Context, network string, limit int) ([]string, error)
+	SetMovementTxHash(ctx context.Context, network, toid, txHash string) (int64, error)
+}
+
+// toidResolver resolves toids to transaction hashes outside the database
+// (the history archives in production).
+type toidResolver interface {
+	Resolve(ctx context.Context, toids []string) (map[string]string, error)
+}
+
 // classifier resolves a contract id to its on-chain classification.
 type classifier interface {
 	Classify(ctx context.Context, contractID string) (registry.Classification, error)
@@ -88,14 +104,16 @@ type Server struct {
 	heal       healPlanner
 	registry   reloader
 	classifier classifier
+	txhashes   movementTxHasher
+	resolver   toidResolver
 	log        *slog.Logger
 }
 
 // NewServer wires the admin API. All collaborators are required.
 func NewServer(network, token string, st contractStore, planner backfillPlanner, heal healPlanner,
-	reg reloader, cls classifier, log *slog.Logger) *Server {
+	reg reloader, cls classifier, hashes movementTxHasher, resolver toidResolver, log *slog.Logger) *Server {
 	return &Server{network: network, token: token, store: st, planner: planner, heal: heal,
-		registry: reg, classifier: cls, log: log}
+		registry: reg, classifier: cls, txhashes: hashes, resolver: resolver, log: log}
 }
 
 // Register mounts the admin routes onto mux.
@@ -103,6 +121,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.Handle("POST /v1/contracts", s.auth(s.handleRegister))
 	mux.Handle("DELETE /v1/contracts/{id}", s.auth(s.handleDelete))
 	mux.Handle("POST /v1/admin/gaps/plan", s.auth(s.handlePlan))
+	mux.Handle("POST /v1/admin/movements/tx-hashes", s.auth(s.handleTxHashes))
 }
 
 // auth admits requests carrying the admin bearer token. The comparison is
@@ -390,6 +409,105 @@ func (s *Server) handlePlan(w http.ResponseWriter, r *http.Request) {
 		"replay_gaps", res.ReplayGaps, "deferred_gaps", res.DeferredGaps,
 		"replay_ledgers", res.ReplayLedgers, "deferred_ledgers", res.DeferredLedgers)
 	writeJSON(w, http.StatusOK, res)
+}
+
+// txHashRequest is the POST /v1/admin/movements/tx-hashes body. An empty
+// body takes every default.
+type txHashRequest struct {
+	// Limit caps how many transactions this call resolves from the
+	// archives; the local passes always run in full. The caller re-POSTs
+	// until done, pacing the archive fetches itself (the same philosophy
+	// as paced registration: pull, idempotent, retry freely).
+	Limit int `json:"limit"`
+}
+
+const (
+	defaultTxHashLimit = 200
+	maxTxHashLimit     = 1000
+)
+
+// txHashResponse reports one reconciliation round. Counts are rows.
+type txHashResponse struct {
+	ResolvedFromTransfers int64  `json:"resolved_from_transfers"`
+	ResolvedFromEvents    int64  `json:"resolved_from_events"`
+	ResolvedFromArchives  int64  `json:"resolved_from_archives"`
+	FailedTransactions    int    `json:"failed_transactions"`
+	FirstFailure          string `json:"first_failure,omitempty"`
+	// Done reports whether any movement still misses its tx_hash; false
+	// means POST again.
+	Done bool `json:"done"`
+}
+
+// handleTxHashes reconciles movements.tx_hash (migration 0013): two local
+// passes over rows this database already trusts, then up to limit
+// transactions resolved from the history archives. Idempotent — every
+// statement only fills NULLs — and pull: the caller repeats the POST
+// until done.
+func (s *Server) handleTxHashes(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	var req txHashRequest
+	if err := dec.Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON body: %v", err))
+		return
+	}
+	switch {
+	case req.Limit == 0:
+		req.Limit = defaultTxHashLimit
+	case req.Limit < 0 || req.Limit > maxTxHashLimit:
+		writeError(w, http.StatusBadRequest,
+			fmt.Sprintf("limit %d must be between 1 and %d", req.Limit, maxTxHashLimit))
+		return
+	}
+
+	var resp txHashResponse
+	var err error
+	resp.ResolvedFromTransfers, resp.ResolvedFromEvents, err = s.txhashes.ResolveMovementTxHashesLocal(r.Context(), s.network)
+	if err != nil {
+		s.log.Error("movement tx hash local passes failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "tx hash reconciliation failed; see server logs")
+		return
+	}
+
+	toids, err := s.txhashes.ListMovementTxHashGaps(r.Context(), s.network, req.Limit)
+	if err != nil {
+		s.log.Error("movement tx hash gap list failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "tx hash reconciliation failed; see server logs")
+		return
+	}
+	if len(toids) > 0 {
+		resolved, resolveErr := s.resolver.Resolve(r.Context(), toids)
+		if resolveErr != nil {
+			resp.FirstFailure = resolveErr.Error()
+		}
+		for _, toid := range toids {
+			hash, ok := resolved[toid]
+			if !ok {
+				resp.FailedTransactions++
+				continue
+			}
+			rows, err := s.txhashes.SetMovementTxHash(r.Context(), s.network, toid, hash)
+			if err != nil {
+				s.log.Error("movement tx hash stamp failed", "toid", toid, "err", err)
+				writeError(w, http.StatusInternalServerError, "tx hash reconciliation failed; see server logs")
+				return
+			}
+			resp.ResolvedFromArchives += rows
+		}
+	}
+
+	remaining, err := s.txhashes.ListMovementTxHashGaps(r.Context(), s.network, 1)
+	if err != nil {
+		s.log.Error("movement tx hash gap recount failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "tx hash reconciliation failed; see server logs")
+		return
+	}
+	resp.Done = len(remaining) == 0
+	s.log.Info("movement tx hash reconciliation round",
+		"from_transfers", resp.ResolvedFromTransfers, "from_events", resp.ResolvedFromEvents,
+		"from_archives", resp.ResolvedFromArchives, "failed", resp.FailedTransactions, "done", resp.Done)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // reloadRegistry refreshes the snapshot after a committed mutation. Failure

@@ -52,6 +52,11 @@ func TestMovementsCaptureAPaymentFromAnUnwatchedToken(t *testing.T) {
 	if m.RawXDR == "" {
 		t.Fatal("movement carries no raw event XDR")
 	}
+	// Same reason for the transaction hash (0013): with no events row to
+	// join to, the hash is unrecoverable from the database after the fact.
+	if m.TxHash == "" {
+		t.Error("movement carries no transaction hash")
+	}
 	var ev xdr.ContractEvent
 	if err := xdr.SafeUnmarshalBase64(m.RawXDR, &ev); err != nil {
 		t.Fatalf("raw XDR does not decode as a ContractEvent: %v", err)

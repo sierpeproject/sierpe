@@ -34,6 +34,7 @@ import (
 	"github.com/zkCaleb-dev/sierpe/internal/source/captive"
 	"github.com/zkCaleb-dev/sierpe/internal/source/rpc"
 	"github.com/zkCaleb-dev/sierpe/internal/store"
+	"github.com/zkCaleb-dev/sierpe/internal/txhash"
 	"github.com/zkCaleb-dev/sierpe/internal/ui"
 )
 
@@ -173,11 +174,18 @@ func run(log *slog.Logger, withIngestion bool) error {
 		}
 	}
 
+	// The toid resolver feeds the movements tx-hash reconciliation from
+	// the history archives — a static-file lookup, no captive core.
+	txResolver, err := txhash.New(cfg.ArchiveURLs)
+	if err != nil {
+		return fmt.Errorf("tx hash resolver: %w", err)
+	}
+
 	metrics := health.NewMetrics()
 	state := &health.State{}
 	mux := http.NewServeMux()
 	health.NewServer(version, string(cfg.Network), state, metrics).Register(mux)
-	admin.NewServer(string(cfg.Network), cfg.AdminToken, st, st, st, reg, registry.NewClassifier(src), log).Register(mux)
+	admin.NewServer(string(cfg.Network), cfg.AdminToken, st, st, st, reg, registry.NewClassifier(src), st, txResolver, log).Register(mux)
 	publicAPI := api.NewServer(string(cfg.Network), st, st, log)
 	publicAPI.Register(mux)
 	publicAPI.RegisterState(mux, st)
