@@ -4,7 +4,7 @@ All notable changes to Sierpe are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org).
 
-## [Unreleased]
+## [1.11.0] - 2026-09-30
 
 ### Added
 
