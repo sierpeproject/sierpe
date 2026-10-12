@@ -106,7 +106,7 @@ Hard rules:
   captive core. Run live on the pilot: 6,211/6,211 rows filled, zero
   failures, one round. Note: the SDF public Horizon now retains weeks of
   history, not years — the archives are the only permanent free source.
-- **Next release (CHANGELOG `[Unreleased]`): decoded values.**
+- **v1.13.0 released (2026-10-12): decoded values.**
   `xdrFormat=json` on events, state, state/history and movements adds the
   RPC's JSON shape beside every base64 ScVal (default responses unchanged
   byte for byte); movements gain `asset`/`decimals` only when the SAC hash
@@ -116,9 +116,10 @@ Hard rules:
   running the tests and copying output. Verified against all 35,357 rows
   of a mainnet instance: 100,337 values byte-identical to the CLI. The
   embedded UI becomes a decoded contract viewer on top of it (hash routes,
-  searchable list, per-contract page, state diffs); `internal/ui/ui_test.go`
-  guards its invariants (no external assets, no browser storage, size cap,
-  innerHTML only in the register box).
+  searchable sortable list, per-contract page, state diffs);
+  `internal/ui/ui_test.go` guards its invariants (no external assets, no
+  browser storage, size cap, innerHTML only in the register box). The cut
+  also moved the Go toolchain to 1.26.9 and cleared govulncheck.
 - Roadmap: rederive subcommand (#88), TTL evictions (#89), TTL liveness
   (#90), batch state query, getEvents v2 facade; v2 push delivery.
 
