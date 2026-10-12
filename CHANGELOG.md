@@ -8,47 +8,6 @@ All notable changes to Sierpe are documented here. The format follows
 
 ### Added
 
-## [1.12.0] - 2026-09-30
-
-### Added
-
-- Movements carry `txHash` (migration 0013). The movement id encodes
-  (ledger, tx_index, event_index) but not the hash, and consumers keying
-  on (network, contract_id, tx_hash, event_index) could not build that
-  key from a movement alone. New rows carry it from derivation — the
-  decoded transfer always had it in hand — and rows from before the
-  migration are filled by the new `POST /v1/admin/movements/tx-hashes`:
-  two local passes over rows the database already trusts (the transfers
-  row sharing the event identity, then any events row of the same
-  transaction), and the remainder resolved from the history archives,
-  whose checkpoint results files pair every transaction hash with its
-  ledger in application order. The archives are the permanent record, so
-  this works arbitrarily far below RPC retention — the SDF public
-  Horizon, by contrast, keeps weeks — and needs no captive core and no
-  replay. The op is idempotent (only ever fills NULLs) and paced by the
-  caller: it resolves up to `limit` transactions per call and reports
-  `done`; repeat the POST until it is.
-
-## [1.11.0] - 2026-09-30
-
-### Added
-
-- `include=rawXdr` on `GET /v1/contracts/{id}/events`: every event gains a
-  `rawXdr` field carrying the stored ContractEvent, base64 — the original
-  bytes, for consumers that re-emit events into their own pipelines and
-  need the envelope rather than our decode (movements have served theirs
-  since v1.6.0). The parameter is presentation only: accepted beside a
-  cursor, never encoded in one, and without it the response does not
-  change by a byte. An unknown `include` value is a 400.
-
-### Security
-
-- `google.golang.org/grpc` upgraded 1.82.1 → 1.83.1: clears GO-2026-6348,
-  which the unpinned `govulncheck@latest` reported as reachable and failed
-  every CI run regardless of the diff — the scan doing exactly the job it
-  was left unpinned to do. The `google.golang.org` and OpenTelemetry
-  modules grpc requires moved with it; all indirect, no code changes.
-=======
 - `xdrFormat=json` on `/events`, `/state`, `/state/history` and
   `/movements`: Stellar RPC's parameter, with its values and its JSON
   shape. Every base64 ScVal gets a sibling in RPC's rendering —
@@ -143,10 +102,52 @@ All notable changes to Sierpe are documented here. The format follows
 
 ### Security
 
-- Indirect dependency grpc upgraded to 1.83.1 (GO-2026-6348, reachable
-  through the Google Cloud client libraries the SDK links), with the Google
-  Cloud and OpenTelemetry modules it pulls: govulncheck exits clean again.
->>>>>>> 0a32ceb (wip: decoded viewer checkpoint before branching off for movements tx hash)
+- Go toolchain 1.25.13 → 1.26.9 and the indirect dependencies
+  golang.org/x/net 0.57.0 → 0.60.0, golang.org/x/text → 0.42.0 and the
+  OpenTelemetry SDK → 1.45.0: clears the 13 reachable findings the
+  unpinned govulncheck reported on the PR (six of them standard-library
+  fixes that ship with the toolchain).
+
+## [1.12.0] - 2026-09-30
+
+### Added
+
+- Movements carry `txHash` (migration 0013). The movement id encodes
+  (ledger, tx_index, event_index) but not the hash, and consumers keying
+  on (network, contract_id, tx_hash, event_index) could not build that
+  key from a movement alone. New rows carry it from derivation — the
+  decoded transfer always had it in hand — and rows from before the
+  migration are filled by the new `POST /v1/admin/movements/tx-hashes`:
+  two local passes over rows the database already trusts (the transfers
+  row sharing the event identity, then any events row of the same
+  transaction), and the remainder resolved from the history archives,
+  whose checkpoint results files pair every transaction hash with its
+  ledger in application order. The archives are the permanent record, so
+  this works arbitrarily far below RPC retention — the SDF public
+  Horizon, by contrast, keeps weeks — and needs no captive core and no
+  replay. The op is idempotent (only ever fills NULLs) and paced by the
+  caller: it resolves up to `limit` transactions per call and reports
+  `done`; repeat the POST until it is.
+
+## [1.11.0] - 2026-09-30
+
+### Added
+
+- `include=rawXdr` on `GET /v1/contracts/{id}/events`: every event gains a
+  `rawXdr` field carrying the stored ContractEvent, base64 — the original
+  bytes, for consumers that re-emit events into their own pipelines and
+  need the envelope rather than our decode (movements have served theirs
+  since v1.6.0). The parameter is presentation only: accepted beside a
+  cursor, never encoded in one, and without it the response does not
+  change by a byte. An unknown `include` value is a 400.
+
+### Security
+
+- `google.golang.org/grpc` upgraded 1.82.1 → 1.83.1: clears GO-2026-6348,
+  which the unpinned `govulncheck@latest` reported as reachable and failed
+  every CI run regardless of the diff — the scan doing exactly the job it
+  was left unpinned to do. The `google.golang.org` and OpenTelemetry
+  modules grpc requires moved with it; all indirect, no code changes.
 
 ## [1.10.2] - 2026-09-10
 
