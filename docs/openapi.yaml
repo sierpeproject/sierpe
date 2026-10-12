@@ -14,7 +14,7 @@ info:
     ScVal field (see the ScValJson schema). The parameter never changes
     the default response; movements carry the proven `asset`/`decimals`
     pair in either format.
-  version: 1.13.0
+  version: 1.13.1
   license:
     name: Apache-2.0
 servers:

@@ -120,6 +120,11 @@ Hard rules:
   `internal/ui/ui_test.go` guards its invariants (no external assets, no
   browser storage, size cap, innerHTML only in the register box). The cut
   also moved the Go toolchain to 1.26.9 and cleared govulncheck.
+- **v1.13.1 released (2026-10-12): the viewer wears the rebrand.**
+  Estuary palette from the site (the retired orange stays on as the
+  warning color) and a global-tabs layout — Contracts, Overview, Admin —
+  with an always-visible status strip; the 300px sidebar is gone.
+  Presentation only: no API change, hence the patch version.
 - Roadmap: rederive subcommand (#88), TTL evictions (#89), TTL liveness
   (#90), batch state query, getEvents v2 facade; v2 push delivery.
 
