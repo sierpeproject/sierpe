@@ -26,7 +26,7 @@ func (f *fakeTransfersReader) QueryTransfers(_ context.Context, _ string, q stor
 func newTestAPIWithTransfers(ev *fakeEventReader, cr *fakeContractReader, tr *fakeTransfersReader) *httptest.Server {
 	mux := http.NewServeMux()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	server := NewServer("testnet", ev, cr, log)
+	server := NewServer("testnet", ev, cr, &fakeAPIMetrics{}, log)
 	server.Register(mux)
 	server.RegisterTransfers(mux, tr)
 	return httptest.NewServer(mux)

@@ -32,7 +32,7 @@ func (f *fakeTrustlinesReader) QueryTrustlineChanges(_ context.Context, _ string
 func newTestAPIWithTrustlines(ev *fakeEventReader, cr *fakeContractReader, tr *fakeTrustlinesReader) *httptest.Server {
 	mux := http.NewServeMux()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	server := NewServer("testnet", ev, cr, log)
+	server := NewServer("testnet", ev, cr, &fakeAPIMetrics{}, log)
 	server.Register(mux)
 	server.RegisterTrustlines(mux, tr)
 	return httptest.NewServer(mux)

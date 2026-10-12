@@ -8,25 +8,105 @@ All notable changes to Sierpe are documented here. The format follows
 
 ### Added
 
-- The embedded UI keeps the selected contract and data tab in the URL
-  fragment (`#/<contract>/<tab>`), so a reload lands where it was and a
-  view can be shared as a link. The fragment is the only route the page
-  claims: the server still serves exactly `/`.
+- `xdrFormat=json` on `/events`, `/state`, `/state/history` and
+  `/movements`: Stellar RPC's parameter, with its values and its JSON
+  shape. Every base64 ScVal gets a sibling in RPC's rendering —
+  `topicJson`, `valueJson`, `keyJson`, `preJson`, `postJson`, and for a
+  movement the topics and data of the event in `rawXdr` — so a topic reads
+  `{"symbol":"tw_fund"}` instead of `AAAADwAAAAd0d19mdW5kAA==`. It exists
+  because base64 was unreadable when verifying 13,164 mainnet events by
+  eye. The base64 stays (RPC drops it), so a JSON page is a strict superset
+  and the topic and key filters keep working. Without it, events, state
+  and state history do not change by a byte, and movements gain only the
+  `asset`/`decimals` pair described below. The parameter is presentation
+  only: it is accepted beside a cursor and never encoded in one, so
+  existing cursors are untouched.
+
+  RPC produces this JSON with the Rust stellar-xdr through CGO, which
+  Sierpe cannot link, so the new `internal/scvaljson` renders it in pure Go
+  over the SDK's XDR types. It is pinned by 261 golden vectors whose
+  expected side comes from `stellar xdr decode` and from RPC's own output,
+  never from the encoder, and was checked against every stored row of a
+  1,285-contract mainnet instance: 100,337 values, byte-identical. On the
+  wire, as with RPC, `&`, `<` and `>` inside strings arrive escaped as
+  `\u0026`, `\u003c` and `\u003e`, so compare responses as JSON. A value
+  it cannot render — an arm the SDK already decodes but no released
+  stellar-xdr defines yet, or a corrupt row — is served as `null` with its
+  base64 intact and counted in the new
+  `sierpe_api_xdr_json_failures_total`, which should alert. One such value
+  never fails the page.
+- Movements carry `asset` and `decimals` when the token is proven to be a
+  Stellar Asset Contract, in either format: the asset string in the
+  event's last topic must parse as exactly one SEP-0011 asset whose
+  contract id, derived under the instance's own network passphrase, is the
+  emitter. Any custom token can name any asset in its events, so an
+  unproven token gets neither field rather than a guess. On the pilot
+  instance that labels all 6,211 movements (6,210 USDC, one native), which
+  is what lets an amount read as 1.0000000 USDC without a single RPC call.
+- The embedded UI is now a decoded contract viewer, still one
+  self-contained HTML page. The contract list loads once and is searched
+  in the page (contract-id substring or wasm-hash prefix, with code and
+  type facets, 100 rows at a time; Enter on a full id opens it), and
+  sorts by any column — only this table: the data tabs page through a
+  cursor, and sorting one fetched page would read as sorting the
+  history. Each
+  contract gets its own full-width page with prev/next through the
+  filtered list, and every view is a deep link (`#/?q=&code=&type=`,
+  `#/c/<id>/<tab>?filters`). Events, state and state history are read with
+  `xdrFormat=json` and rendered decoded; the page decodes no XDR itself.
+  Every state change shows its diff by path
+  (`.storage[Escrow].flags.released false → true`), an added or removed
+  subtree as one entry. Movement amounts are scaled only when the server
+  proved the token (`asset`/`decimals`), otherwise they stay raw units and
+  say so; a per-token "Sum all movements" appears only once every page is
+  loaded and is labelled "not a balance". Rows older than the vouched
+  range are marked and counted, never hidden. Every row has an `xdr`
+  disclosure with the base64, the JSON and the `stellar xdr decode` line
+  that reproduces it. Topic and key filters accept a symbol (`sym:name`
+  to insist), `instance`, a G/C address, a `[vec]` or base64, and show
+  which reading they used. Chain strings are shown as their bytes:
+  controls, format characters and other invisible code points are drawn
+  as `\u` escapes, and right-to-left text is isolated so it cannot
+  reorder the values beside it.
+  Links out to Stellar Expert are built only from validated ids, and the
+  page is served with `Referrer-Policy: no-referrer` so they do not carry
+  the instance's address.
 
 ### Changed
 
-- The embedded UI's contracts table sorts by any column (click the
-  header; click again to flip). Only the contracts table: the data tabs
-  page through a cursor, and sorting one fetched page would read as
-  sorting the whole history.
-- The embedded UI's contracts table now scales to registries with
-  hundreds of contracts: a client-side filter box (matches address,
-  type, or kind) with a shown/registered counter sits above the table,
-  the table body scrolls inside a capped panel with the header row
-  pinned, and the contract detail stays reachable right below instead
-  of after the full list. Selecting a row no longer refetches the
-  registry. The pilot registry (1,285 contracts) made the flat list
-  unusable: the detail panel rendered after 1,285 rows.
+- The UI no longer re-polls the whole contract list every 15 s (about
+  600 KB per poll at 1,285 contracts). The ↻ button reloads it, and so do
+  register and unregister. The open contract's header still refreshes
+  every 15 s, and the `/status` poll pauses while the tab is hidden.
+- The UI's instance box shows gaps pending heal, deferred gaps (with the
+  ledgers never read) and source failovers, explains an `unverified`
+  archive leg, and marks its times as UTC. Registering a contract shows
+  the response's `warnings`, so an archived instance no longer registers
+  silently.
+
+### Fixed
+
+- The UI rendered a selected contract's detail below the whole contract
+  list: about 37,600 px down at 1,285 contracts. The contract page is now
+  its own view.
+- In the UI, a late response for one contract could paint over the page of
+  another opened right after it. Navigation now aborts in-flight fetches.
+- The UI's HTML escaping did not escape `'`. Chain strings are now
+  rendered only as DOM text, with control and format characters (bidi
+  overrides, zero-width characters, the BOM, tag characters) shown as
+  visible escapes.
+- `docs/openapi.yaml` never declared the `state` object that
+  `GET /v1/contracts/{id}` has always returned, and its `info.version`
+  still read `0.1.0-m1`. `docs/RELEASING.md` now has the step that keeps
+  it current.
+
+### Security
+
+- Go toolchain 1.25.13 → 1.26.9 and the indirect dependencies
+  golang.org/x/net 0.57.0 → 0.60.0, golang.org/x/text → 0.42.0 and the
+  OpenTelemetry SDK → 1.45.0: clears the 13 reachable findings the
+  unpinned govulncheck reported on the PR (six of them standard-library
+  fixes that ship with the toolchain).
 
 ## [1.12.0] - 2026-09-30
 

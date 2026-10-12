@@ -4,112 +4,124 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sierpe</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%23e8590c'/%3E%3Cpath fill='%23fff' d='M4 17c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3v-2c-2.5 0-2.5 3-5 3s-2.5-3-5-3-2.5 3-5 3v2zm0-6c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3V6c-2.5 0-2.5 3-5 3S11.5 6 9 6 6.5 9 4 9v2z'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%23c44a08'/%3E%3Cpath fill='%23fff' d='M4 17c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3v-2c-2.5 0-2.5 3-5 3s-2.5-3-5-3-2.5 3-5 3v2zm0-6c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3V6c-2.5 0-2.5 3-5 3S11.5 6 9 6 6.5 9 4 9v2z'/%3E%3C/svg%3E">
 <style>
-/* Sierpe embedded UI — same aesthetic as sierpe-web: orange & white. */
+/* Sierpe embedded UI — same aesthetic as sierpe-web: orange & white.
+   Tokens follow sierpe-web's main.css: bars use --orange-dark (4.85:1 for
+   white text, AA at 14px); plain --orange stays an accent only. */
 :root {
-  --orange: #e8590c;
-  --orange-dark: #c44a08;
-  --orange-pale: #fff3ec;
-  --ink: #222;
-  --muted: #666;
-  --line: #ddd;
-  --box: #f7f7f7;
+  --orange: #e8590c; --orange-dark: #c44a08; --orange-deep: #a33d06; --orange-pale: #fff3ec;
+  --ink: #1f1f1f; --muted: #5c5c5c; --line: #dcdcdc; --box: #f7f7f7;
+  --sym: #1d5fa8; --num: #7a3d00; --str: #256029; --ok: #2b7a2b;
 }
 * { box-sizing: border-box; }
-body {
-  margin: 0;
-  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  color: var(--ink);
-  background: #fff;
-}
-.wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+[hidden] { display: none !important; } /* .cols sets display:grid, which would beat the hidden attribute */
+body { margin: 0; font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--ink); background: #fff; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
 code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+a { color: var(--orange-dark); }
+.sel { user-select: all; }
 
-#topbar { background: var(--orange); border-bottom: 3px solid var(--orange-dark); }
-#topbar .wrap { display: flex; align-items: center; justify-content: space-between; min-height: 48px; }
+#topbar { background: var(--orange-dark); border-bottom: 3px solid var(--orange-deep); }
+#topbar .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; min-height: 48px; gap: 4px 12px; }
 #logo { color: #fff; font-size: 21px; font-weight: 700; letter-spacing: .5px; text-decoration: none; display: flex; align-items: center; gap: 8px; }
 #instinfo { color: #fff; font-size: 13px; font-weight: 600; }
 #instinfo .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #bbb; margin-right: 5px; }
 #instinfo .dot.ok { background: #6ee06e; }
 
-main { padding: 20px 16px 48px; }
+main { padding: 16px 16px 48px; }
 h1 { font-size: 22px; margin: 8px 0 12px; }
-h2 { font-size: 18px; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); color: var(--orange-dark); }
-a { color: var(--orange-dark); }
+h1.mono { font-size: 17px; margin: 4px 0; word-break: break-all; }
+#crumbs { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 16px; }
+#crumbs .off { color: #9a9a9a; }
+.actions { font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin: 2px 0 8px; }
 
 .cols { display: grid; grid-template-columns: 1fr 300px; gap: 28px; }
 .cols > * { min-width: 0; }
-@media (max-width: 800px) { .cols { grid-template-columns: 1fr; } }
-
+@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
 .sidebox { border: 1px solid var(--line); background: var(--box); margin-bottom: 20px; font-size: 14px; }
-.sidebox h3 { margin: 0; padding: 7px 12px; background: var(--orange); color: #fff; font-size: 14px; }
+.sidebox h3 { margin: 0; padding: 7px 12px; background: var(--orange-dark); color: #fff; font-size: 14px; }
 .sidebox .pad { padding: 8px 12px; }
-.sidebox dl { margin: 4px 0; }
-.sidebox dt { font-weight: 600; margin-top: 6px; }
-.sidebox dd { margin: 0; color: var(--muted); }
+.sidebox dl { margin: 4px 0; } .sidebox dt { font-weight: 600; margin-top: 6px; } .sidebox dd { margin: 0; color: var(--muted); }
 
 table { border-collapse: collapse; margin: 10px 0; width: 100%; font-size: 13px; }
 th, td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
-th { background: var(--box); }
+th { background: var(--box); white-space: nowrap; }
+#contracts thead th { cursor: pointer; user-select: none; }
 .tblwrap { overflow-x: auto; }
-tr.sel { background: var(--orange-pale); }
-#contracts tbody tr { cursor: pointer; }
-
-/* The contracts table is capped so the detail below stays reachable with
-   hundreds of registered contracts; the header pins while the body scrolls.
-   Sticky headers need border-collapse: separate (collapsed borders detach
-   from the sticky cell), so this table draws its own grid. */
-#cwrap { max-height: 400px; overflow-y: auto; border: 1px solid var(--line); }
-#contracts { border-collapse: separate; border-spacing: 0; margin: 0; }
-#contracts th, #contracts td { border: 0; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); }
-#contracts th:last-child, #contracts td:last-child { border-right: 0; }
-#contracts tbody tr:last-child td { border-bottom: 0; }
-#contracts thead th { position: sticky; top: 0; background: var(--box); cursor: pointer; user-select: none; }
-
-.err {
-  margin: 10px 0; padding: 8px 14px; background: var(--orange-pale);
-  border-left: 3px solid var(--orange); font-size: 14px; white-space: pre-wrap;
-  word-break: break-word;
-}
+td a.cid, td.nw { white-space: nowrap; }
+@media (max-width: 700px) { td a.cid { white-space: normal; word-break: break-all; } }
+tr.below > td:first-child { border-left: 3px dashed var(--orange); }
+.err { margin: 10px 0; padding: 8px 14px; background: var(--orange-pale); border-left: 3px solid var(--orange); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
 .note { color: var(--muted); font-size: 13px; }
+.hint { font-size: 12px; color: var(--muted); }
+.statusline { font-size: 13px; color: var(--muted); margin: 6px 0; }
+.badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 0 7px; border-radius: 9px; background: var(--box); border: 1px solid var(--line); white-space: nowrap; }
+.badge.warn { background: var(--orange-pale); border-color: var(--orange); color: var(--orange-deep); }
+.badge.ok { border-color: var(--ok); color: var(--ok); background: #fff; }
 
-input, select, button {
-  font: inherit; font-size: 13px; padding: 4px 6px;
-  border: 1px solid var(--line); border-radius: 3px; background: #fff;
-}
-button {
-  background: var(--orange); color: #fff; border-color: var(--orange-dark);
-  font-weight: 600; cursor: pointer; padding: 4px 12px;
-}
-button:hover { background: var(--orange-dark); }
+input, select, button { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 3px; background: #fff; max-width: 100%; }
+button { background: var(--orange-dark); color: #fff; border-color: var(--orange-deep); font-weight: 600; cursor: pointer; padding: 4px 12px; }
+button:hover { background: var(--orange-deep); }
 button.plain { background: #fff; color: var(--orange-dark); font-weight: 400; }
 button.plain:hover { background: var(--box); }
-form.inline { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
-form.inline label { font-size: 13px; color: var(--muted); }
+button:disabled { opacity: .5; cursor: default; }
+form.inline, .toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
 .sidebox input:not([type=checkbox]) { width: 100%; margin: 3px 0; }
 .kindcheck input { width: auto; margin: 0 3px 0 0; vertical-align: -1px; }
 .kindcheck { font-size: 13px; margin-right: 8px; white-space: nowrap; }
+#q { flex: 1 1 240px; min-width: 0; }
 
-#tabs { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 2px solid var(--orange); margin-top: 14px; }
-#tabs button {
-  background: var(--box); color: var(--ink); border: 1px solid var(--line);
-  border-bottom: none; border-radius: 3px 3px 0 0; font-weight: 600; margin-right: 3px;
-}
-#tabs button.active { background: var(--orange); color: #fff; border-color: var(--orange-dark); }
+#tabs { display: flex; flex-wrap: wrap; border-bottom: 2px solid var(--orange-dark); margin-top: 14px; }
+#tabs a { padding: 4px 12px; margin-right: 3px; background: var(--box); color: var(--ink); border: 1px solid var(--line); border-bottom: none; border-radius: 3px 3px 0 0; font-weight: 600; font-size: 13px; text-decoration: none; }
+#tabs a.active { background: var(--orange-dark); color: #fff; border-color: var(--orange-deep); }
 
-.statusline { font-size: 13px; color: var(--muted); margin: 6px 0; }
-.badge {
-  display: inline-block; font-size: 12px; font-weight: 600; padding: 0 7px;
-  border-radius: 9px; background: var(--box); border: 1px solid var(--line);
-}
-.badge.warn { background: var(--orange-pale); border-color: var(--orange); color: var(--orange-dark); }
+.summary { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; font-size: 13px; margin: 8px 0; }
+.summary dt { color: var(--muted); } .summary dd { margin: 0; min-width: 0; word-break: break-word; }
+.cov { border: 1px solid var(--line); border-left: 3px solid var(--orange); background: var(--box); padding: 6px 12px; font-size: 13px; margin: 10px 0; }
+.chip { display: inline-block; margin: 0 4px 3px 0; padding: 0 7px; border: 1px solid var(--line); border-radius: 9px; font-size: 12px; background: #fff; text-decoration: none; color: var(--ink); }
+a.chip:hover { border-color: var(--orange-dark); }
+
+/* decoded values */
+.v-sym { color: var(--sym); font-family: ui-monospace, Menlo, monospace; font-size: 13px; unicode-bidi: isolate; }
+.v-num { color: var(--num); font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+.v-str { color: var(--str); white-space: pre-wrap; word-break: break-word; unicode-bidi: isolate; }
+.v-str::before, .v-str::after { content: '"'; color: var(--muted); }
+.v-kw, .v-void { font-style: italic; color: var(--muted); }
+.v-bytes { word-break: break-all; }
+.ctl { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #fff; background: var(--orange-deep); border-radius: 2px; padding: 0 2px; }
+.t { color: #8a8a8a; font-size: 11px; margin-left: 1px; }
+.addrw { white-space: nowrap; }
+.addr { cursor: pointer; }
+.addr.full { white-space: normal; word-break: break-all; user-select: all; }
+a.ext, a.int { text-decoration: none; font-size: 12px; margin-left: 3px; }
+details.v { display: inline-block; vertical-align: top; max-width: 100%; }
+details.v > summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+details.v[open] > summary > .pv { display: none; }
+.pv { font-family: ui-monospace, Menlo, monospace; color: var(--ink); margin-left: 6px; word-break: break-word; unicode-bidi: isolate; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0 10px; padding-left: 12px; border-left: 1px dotted var(--line); margin: 2px 0 2px 3px; }
+.kv > .k { color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 12px; max-width: 22em; word-break: break-all; }
+.kv > .k.sym { color: var(--sym); }
+.more { font-size: 12px; margin-left: 4px; }
+.diff { margin: 0; padding: 0; list-style: none; }
+.diff li { margin: 1px 0; }
+.diff .p { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); margin-right: 6px; word-break: break-all; unicode-bidi: isolate; }
+.dold { text-decoration: line-through; opacity: .75; }
+.dnew { font-weight: 700; }
+.arrow { color: var(--orange-dark); margin: 0 5px; font-weight: 700; }
+.side { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+@media (max-width: 700px) { .side { grid-template-columns: 1fr; } }
+details.raw { font-size: 12px; } details.raw > summary { cursor: pointer; color: var(--muted); list-style: none; white-space: nowrap; }
+details.raw > summary::after { content: " \25b8"; } details.raw[open] > summary::after { content: " \25be"; }
+details.raw code { display: block; white-space: pre-wrap; word-break: break-all; background: var(--box); padding: 4px 6px; margin: 3px 0; max-height: 220px; overflow: auto; }
+.amt { font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 600; }
+.in { color: var(--ok); } .out { color: var(--orange-deep); }
 </style>
 </head>
 <body>
 <header id="topbar">
   <div class="wrap">
-    <a id="logo" href="/">
+    <a id="logo" href="#/">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 17c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3v-2c-2.5 0-2.5 3-5 3s-2.5-3-5-3-2.5 3-5 3v2zm0-6c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3V6c-2.5 0-2.5 3-5 3S11.5 6 9 6 6.5 9 4 9v2z"/></svg>
       sierpe
     </a>
@@ -118,32 +130,31 @@ form.inline label { font-size: 13px; color: var(--muted); }
 </header>
 
 <main class="wrap">
-  <div class="cols">
+  <div class="cols" id="view-list">
     <div>
-      <h1>Registered contracts</h1>
-      <form class="inline" id="csearchform">
-        <input id="csearch" placeholder="filter by address, type, or kind" size="30" autocomplete="off">
-        <span class="note" id="ccount"></span>
-      </form>
-      <div class="tblwrap" id="cwrap">
+      <h1>Registered contracts <span class="note" id="listcount"></span></h1>
+      <div class="toolbar">
+        <input id="q" placeholder="search contract id or wasm hash ( / )" autocomplete="off" spellcheck="false">
+        <select id="fcode" aria-label="code (wasm hash)"></select>
+        <select id="ftype" aria-label="type"></select>
+        <button class="plain" id="reload" title="the list is loaded once; reload it after registering elsewhere">↻</button>
+      </div>
+      <div class="hint" id="loadedat"></div>
+      <div id="listmsg"></div>
+      <div class="tblwrap">
         <table id="contracts">
           <thead><tr>
             <th data-sort="contract">Contract</th>
             <th data-sort="type">Type</th>
+            <th data-sort="code">Code</th>
             <th data-sort="kinds">Kinds</th>
             <th data-sort="registered">Registered</th>
           </tr></thead>
           <tbody></tbody>
         </table>
       </div>
+      <button class="plain" id="listmore" hidden>Show 100 more</button>
       <p class="note" id="nocontracts" hidden>Nothing registered yet — use the Register box to add a contract.</p>
-
-      <div id="detail" hidden>
-        <h2 id="dtitle" class="mono"></h2>
-        <div id="dinfo"></div>
-        <div id="tabs"></div>
-        <div id="tabbody"></div>
-      </div>
     </div>
 
     <aside>
@@ -177,181 +188,970 @@ form.inline label { font-size: 13px; color: var(--muted); }
       </div>
     </aside>
   </div>
+
+  <div id="view-detail" hidden>
+    <div id="crumbs"><a id="backlink" href="#/">‹ Contracts</a><span id="navline"></span></div>
+    <h1 class="mono sel" id="dtitle"></h1>
+    <div class="actions" id="dactions"></div>
+    <div id="dinfo"></div>
+    <nav id="tabs"></nav>
+    <div class="note" id="notderived"></div>
+    <div id="tabbody"></div>
+  </div>
 </main>
 
 <script>
 "use strict";
+/* ---- basics ---- */
 const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const short = (s, n = 10) => s && s.length > 2 * n ? s.slice(0, n) + "…" + s.slice(-4) : (s ?? "");
-const when = (iso) => iso ? iso.replace("T", " ").replace("Z", "") : "";
+// esc serves the register box, the one place still assembled as HTML; no
+// chain data passes through it. It escapes the single quote too: this page
+// single-quotes attributes, and an unescaped ' is an attribute breakout.
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const short = (s, a = 4, b = 4) => s && s.length > a + b + 1 ? s.slice(0, a) + "…" + (b ? s.slice(-b) : "") : (s ?? "");
+// Ledger close time is the business clock (rule 8), and it is UTC: say so,
+// since Stellar Expert prints UTC too and the two are compared by eye.
+const when = (iso) => iso ? iso.replace("T", " ").replace(/(\.\d+)?Z$/, "") + " UTC" : "";
 
 // api resolves a path against the origin WITHOUT document credentials:
-// a page opened as https://user:pass@host/ poisons relative fetch URLs
+// a page opened with user:pass@host in its URL poisons relative fetch URLs
 // (the Fetch spec forbids credentials in request URLs), which blanked the
 // whole UI for anyone using that form. Found by the first real user.
 const api = (path) => location.origin + path;
 
-async function getJSON(path) {
-  const r = await fetch(api(path));
+async function getJSON(path, signal) {
+  const r = await fetch(api(path), { signal });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || (r.status + " " + r.statusText));
   return body;
 }
 
-function errBox(el, e) { el.innerHTML = '<div class="err">' + esc(e.message || e) + "</div>"; }
+// h builds DOM nodes. Everything read from the chain reaches the page
+// through here — as text nodes and setAttribute, never as HTML — because
+// decoded strings are attacker-controlled: mainnet escrows carry quotes,
+// angle brackets, newlines and emoji in their titles.
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat(Infinity)) if (k != null && k !== false && k !== "") el.append(k instanceof Node ? k : String(k));
+  return el;
+}
+const errNode = (e) => h("div", { class: "err" }, e.message || String(e));
+const aborted = (e) => e && e.name === "AbortError";
+
+// copy works on plain-http tailnet URLs too, where navigator.clipboard is
+// missing (not a secure context).
+function copy(text) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+  const t = h("textarea", { style: "position:fixed;opacity:0" }, text);
+  document.body.append(t); t.select(); document.execCommand("copy"); t.remove();
+}
+
+/* ---- chain text: shown as the bytes say, never able to disguise itself ---- */
+const UTF8 = new TextDecoder("utf-8"), UTF8_STRICT = new TextDecoder("utf-8", { fatal: true }), ENC = new TextEncoder();
+// xdrBytes undoes stellar-xdr's escape_bytes, the form RPC xdrFormat=json
+// and `stellar xdr decode` give ScString/ScSymbol: printable ASCII kept,
+// \\ \0 \t \n \r named, every other byte \xNN.
+function xdrBytes(s) {
+  const out = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 92 && i + 1 < s.length) {
+      const n = s[i + 1];
+      if (n === "x" && /^[0-9a-f]{2}$/.test(s.substr(i + 2, 2))) { out.push(parseInt(s.substr(i + 2, 2), 16)); i += 3; continue; }
+      const m = { "\\": 92, "0": 0, t: 9, n: 10, r: 13 }[n];
+      if (m !== undefined) { out.push(m); i++; continue; }
+    }
+    if (c < 128) out.push(c); else out.push(...ENC.encode(s[i]));
+  }
+  return Uint8Array.from(out);
+}
+// xdrText is what a person should read: the original bytes as UTF-8, with
+// invalid sequences as U+FFFD and flagged rather than hidden.
+function xdrText(s) {
+  const b = xdrBytes(String(s));
+  try { return { t: UTF8_STRICT.decode(b), bad: false }; } catch { return { t: UTF8.decode(b), bad: true }; }
+}
+// CTL is what could hide or reorder text: every control (Cc: C0, DEL, C1;
+// tab and newline excepted — pre-wrap shows them), every format character
+// (Cf: bidi marks, embeddings, overrides and isolates, zero-width spaces and
+// joiners, the BOM, the soft hyphen, the tag block) and every other default
+// ignorable (variation selectors, the grapheme joiner, Hangul fillers). They
+// are drawn as visible \u escapes, so two strings with different bytes never
+// look the same for want of an invisible character (homoglyphs are another
+// matter). One exception keeps the pilot's titles readable: U+FE0F right
+// after an emoji, which asks for its colour form. The price is that an emoji
+// ZWJ sequence shows its joiners; the mainnet pilot data carries none.
+const CTL = /(?![\t\n])(?!(?<=\p{Extended_Pictographic})\ufe0f)[\p{Cc}\p{Cf}\p{Default_Ignorable_Code_Point}]/gu;
+const uesc = (c) => { const n = c.codePointAt(0).toString(16); return n.length > 4 ? "\\u{" + n + "}" : "\\u" + n.padStart(4, "0"); };
+const plain = (s) => String(s).replace(CTL, uesc);
+// iso fences chain text that is laid out inline with other values in first-
+// strong isolates (written escaped: the page source stays free of them), so
+// a right-to-left string cannot pull the numbers and punctuation next to it
+// into its run (a Hebrew string before 500i128 would otherwise show the 500
+// inside its quotes). ASCII text
+// has no right-to-left letters and is left alone, so it copies clean. Apply
+// it after plain(), which escapes any isolate the chain supplied.
+const iso = (s) => /[^\x00-\x7f]/.test(s) ? "\u2068" + s + "\u2069" : s;
+function textNodes(s) {
+  const out = [];
+  let last = 0;
+  for (const m of s.matchAll(CTL)) {
+    if (m.index > last) out.push(s.slice(last, m.index));
+    out.push(h("span", { class: "ctl", title: "control or format character, shown escaped" }, uesc(m[0])));
+    last = m.index + m[0].length; // tag characters are surrogate pairs
+  }
+  if (last < s.length) out.push(s.slice(last));
+  return out;
+}
+
+/* ---- strkeys: checked before anything is linked or encoded ---- */
+const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const VER = { G: 6 << 3, C: 2 << 3, M: 12 << 3 };
+function crc16(b) { // CRC16-XModem, as strkey uses
+  let c = 0;
+  for (const x of b) {
+    c ^= x << 8;
+    for (let k = 0; k < 8; k++) c = c & 0x8000 ? ((c << 1) ^ 0x1021) & 0xffff : (c << 1) & 0xffff;
+  }
+  return c;
+}
+// strkeyBytes returns the payload of a canonical strkey of kind ch (G
+// account, C contract, M muxed account) — alphabet, length, version byte,
+// padding bits and checksum all checked — or null.
+function strkeyBytes(ch, s) {
+  if (typeof s !== "string" || !VER[ch] || s.length !== (ch === "M" ? 69 : 56) || s[0] !== ch || !/^[A-Z2-7]+$/.test(s)) return null;
+  const out = [];
+  let bits = 0, val = 0;
+  for (const c of s) {
+    val = (val << 5) | B32.indexOf(c); bits += 5;
+    if (bits >= 8) { bits -= 8; out.push((val >>> bits) & 0xff); }
+    val &= (1 << bits) - 1;
+  }
+  if (val !== 0) return null;
+  const raw = Uint8Array.from(out), n = raw.length - 2, c = crc16(raw.subarray(0, n));
+  if (raw[0] !== VER[ch] || raw[n] !== (c & 0xff) || raw[n + 1] !== c >> 8) return null;
+  return raw.subarray(1, n);
+}
+
+/* ---- Stellar Expert links: the page's way of saying "check me" ---- */
+let NET = null;
+// SE_ID gates every outbound href: only ids that pass their kind's check
+// (checksummed strkeys, hex hashes, digits) become links. Strings decoded
+// from the chain are never linkified.
+const SE_ID = {
+  contract: (s) => !!strkeyBytes("C", s),
+  account: (s) => !!(strkeyBytes("G", s) || strkeyBytes("M", s)),
+  tx: (s) => /^([0-9a-f]{64}|[1-9][0-9]{0,19})$/.test(s),
+  ledger: (s) => /^[1-9][0-9]{0,9}$/.test(s),
+  asset: (s) => s === "XLM" || (/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/.test(s) && !!strkeyBytes("G", s.split("-")[1])),
+};
+function seHref(kind, id, suffix = "") {
+  const n = NET === "mainnet" ? "public" : NET === "testnet" ? "testnet" : null;
+  id = String(id);
+  if (!n || !Object.hasOwn(SE_ID, kind) || !SE_ID[kind](id)) return null;
+  return "https://stellar.expert/explorer/" + n + "/" + kind + "/" + id + suffix;
+}
+function ext(kind, id, label, suffix) {
+  const href = seHref(kind, id, suffix);
+  return href && h("a", { class: "ext", href, target: "_blank", rel: "noopener noreferrer", title: "open in Stellar Expert" }, label || "↗");
+}
+// txToid returns the TOID an id starts with ({toid}-{index}) as a decimal
+// STRING. TOIDs pass 2^53: Number() would turn 254035113557024768 into
+// 254035113557024770, a different transaction.
+const txToid = (id) => { const m = /^0*(\d+)-\d+$/.exec(id || ""); return m ? m[1] : null; };
+function txRef(id, hash) {
+  if (hash) return h("span", { class: "addrw" }, h("span", { class: "mono", title: hash }, short(hash, 8, 4)), ext("tx", hash));
+  const toid = txToid(id);
+  if (!toid) return "";
+  // Rows that carry no tx hash (movements) still reach their transaction:
+  // Stellar Expert resolves /tx/<toid>.
+  return h("span", { class: "addrw" }, h("span", { class: "mono", title: "transaction TOID " + toid + " (this row carries no tx hash)" }, "toid " + short(toid, 6, 4)), ext("tx", toid));
+}
+const ledgerRef = (seq) => h("span", { class: "addrw" }, String(seq), ext("ledger", String(seq)));
+
+let REGISTERED = new Set();
+let CURRENT = null;
+function addr(a) {
+  const s = h("span", { class: "addr mono", title: a + " (click to expand)" }, short(a));
+  s.onclick = () => { s.textContent = s.classList.toggle("full") ? a : short(a); };
+  const kind = a[0] === "C" ? "contract" : a[0] === "G" || a[0] === "M" ? "account" : null;
+  return h("span", { class: "addrw" }, s,
+    a[0] === "C" && a !== CURRENT && REGISTERED.has(a) ? h("a", { class: "int", href: "#/c/" + a, title: "registered here: open in sierpe" }, "⤷") : null,
+    kind && ext(kind, a));
+}
+
+/* ---- filters: what a person types → the base64 ScVal the API matches ---- */
+const b64 = (bytes) => btoa(Array.from(bytes, (x) => String.fromCharCode(x)).join(""));
+const u32 = (n) => [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
+const SYM = /^[A-Za-z0-9_]{1,32}$/;
+const scSymbol = (s) => { const b = Array.from(s, (c) => c.charCodeAt(0)); return [...u32(15), ...u32(b.length), ...b, ...Array((4 - (b.length % 4)) % 4).fill(0)]; };
+function scAddress(s) {
+  let p;
+  if ((p = strkeyBytes("G", s))) return [...u32(18), ...u32(0), ...u32(0), ...p];
+  if ((p = strkeyBytes("C", s))) return [...u32(18), ...u32(1), ...p];
+  return null;
+}
+// "sym:" forces the symbol reading, for a symbol that would otherwise read
+// as something else (one named instance, or one that looks like base64).
+const symOf = (s) => s.startsWith("sym:") && SYM.test(s.slice(4)) ? s.slice(4) : null;
+const scItem = (s) => symOf(s) ? scSymbol(symOf(s)) : s === "instance" ? u32(20) : scAddress(s) || (SYM.test(s) ? scSymbol(s) : null);
+// A base64 ScVal starts with its type as a big-endian u32 and is 4-byte
+// aligned; that is how a pasted value is told from a symbol.
+function looksScVal(s) {
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(s) || s.length % 4) return false;
+  let b;
+  try { b = atob(s); } catch { return false; }
+  return b.length >= 4 && b.length % 4 === 0 && !b.charCodeAt(0) && !b.charCodeAt(1) && !b.charCodeAt(2) && b.charCodeAt(3) <= 22;
+}
+// readFilter reads topic/key input as base64, the instance key, a G/C
+// address, a symbol (sym:name to insist) or a [vec] of those — the forms
+// the page displays — and says which reading it chose; the page shows that
+// next to the form.
+function readFilter(s) {
+  s = s.trim();
+  if (symOf(s)) return { b64: b64(scSymbol(symOf(s))), as: "symbol" };
+  if (looksScVal(s)) return { b64: s, as: "base64 ScVal" };
+  if (s === "instance") return { b64: b64(u32(20)), as: "the instance key" };
+  const a = scAddress(s);
+  if (a) return { b64: b64(a), as: "address" };
+  if (SYM.test(s)) return { b64: b64(scSymbol(s)), as: "symbol" };
+  const m = /^\[(.*)\]$/.exec(s);
+  if (m) {
+    const items = m[1].split(",").map((x) => x.trim()).filter(Boolean).map(scItem);
+    if (items.every(Boolean)) return { b64: b64([...u32(16), ...u32(1), ...u32(items.length), ...items.flat()]), as: "vec" };
+  }
+  return null;
+}
+
+/* ---- decoded values: the server's stellar-xdr JSON, rendered as DOM ---- */
+const NUMS = new Set(["u32", "i32", "u64", "i64", "u128", "i128", "u256", "i256"]);
+const kindOf = (v) => v && typeof v === "object" && !Array.isArray(v) ? Object.keys(v)[0] : null;
+const tag = (t) => h("span", { class: "t" }, t);
+const errText = (x) => { const [t] = Object.keys(x || {}); return "error(" + t + (typeof x[t] === "number" ? " " : ": ") + x[t] + ")"; };
+function isoOf(x) {
+  try { const n = BigInt(x); return n <= 253402300799n ? new Date(Number(n) * 1000).toISOString().replace(".000Z", "Z") : ""; } catch { return ""; }
+}
+function durOf(x) {
+  try {
+    let n = BigInt(x);
+    const parts = [];
+    for (const [u, s] of [[86400n, "d"], [3600n, "h"], [60n, "m"], [1n, "s"]]) if (n >= u) { parts.push(n / u + s); n %= u; }
+    return parts.join(" ") || "0s";
+  } catch { return ""; }
+}
+// undecoded is what a value the server could not render looks like: said,
+// with its base64, never dropped.
+const undecoded = (raw) => h("span", {}, h("span", { class: "badge warn", title: "the server could not render this value; its base64 is intact" }, "could not decode"), " ", h("code", { class: "sel" }, short(raw || "", 40, 8)));
+const shown = (j, raw, d) => j == null ? (raw ? undecoded(raw) : "") : value(j, d);
+
+function str(x) {
+  const { t, bad } = xdrText(x), cps = Array.from(t), LIM = 400;
+  const el = h("span", { class: "v-str" }, textNodes(cps.length > LIM ? cps.slice(0, LIM).join("") : t));
+  const out = [el];
+  if (cps.length > LIM) {
+    const more = h("a", { href: "#", class: "more", onclick: (e) => { e.preventDefault(); el.replaceChildren(...textNodes(t)); more.remove(); } }, "+" + (cps.length - LIM) + " chars");
+    out.push(more);
+  }
+  if (bad) out.push(" ", h("span", { class: "badge warn", title: "escaped bytes: " + x }, "invalid UTF-8"));
+  return out.length > 1 ? h("span", {}, out) : el;
+}
+// value renders a decoded ScVal generically: no contract's field meanings
+// are known here (protocol decoders live outside the core, P10). Integers
+// are never scaled — an i128 inside a value may be an amount or an id.
+// Type tags follow Stellar Expert's typed notation so the two read alike.
+function value(v, d = 0) {
+  if (v === "void") return h("span", { class: "v-void" }, "void");
+  if (v === "ledger_key_contract_instance") return h("span", { class: "badge" }, "instance");
+  const k = kindOf(v), x = k && v[k];
+  if (NUMS.has(k)) return h("span", { class: "v-num" }, String(x), tag(k));
+  switch (k) {
+    case "bool": return h("span", { class: "v-num" }, String(x));
+    case "timepoint": return h("span", { class: "v-num", title: isoOf(x) }, String(x), tag(k));
+    case "duration": return h("span", { class: "v-num", title: durOf(x) }, String(x), tag(k));
+    case "symbol": return h("span", { class: "v-sym" }, textNodes(xdrText(x).t));
+    case "string": return str(x);
+    case "bytes": return h("span", { class: "v-bytes mono", title: x.length / 2 + " bytes" }, x.length > 64 ? x.slice(0, 64) + "…" : x, tag("bytes"));
+    case "address": return addr(x);
+    case "error": return h("span", { class: "v-kw" }, errText(x));
+    case "ledger_key_nonce": return h("span", { class: "v-kw" }, "nonce " + x.nonce);
+    case "vec":
+      if (x === null) return h("span", { class: "v-void" }, "none (vec)");
+      return box(v, x.map((e, i) => ["[" + i + "]", value(e, d + 1)]), d);
+    case "map":
+      if (x === null) return h("span", { class: "v-void" }, "none (map)");
+      return box(v, x.map((e) => kindOf(e.key) === "symbol"
+        ? [plain(xdrText(e.key.symbol).t), value(e.val, d + 1), true] : [keyText(e.key) ?? preview(e.key, 40), value(e.val, d + 1)]), d);
+    case "contract_instance": {
+      const ex = x.executable;
+      const exe = ex === "stellar_asset" ? h("span", { class: "v-kw" }, "Stellar Asset Contract")
+        : ex && ex.wasm ? h("span", { class: "mono", title: ex.wasm }, "wasm " + short(ex.wasm, 8, 6)) : h("code", {}, JSON.stringify(ex));
+      const sto = !x.storage ? h("span", { class: "v-void" }, "no instance storage") : value({ map: x.storage }, d + 1);
+      return box(v, [["executable", exe, true], ["storage", sto, true]], d, true);
+    }
+  }
+  // An arm this page does not know: shown as JSON, never dropped.
+  return h("code", {}, JSON.stringify(v));
+}
+// box is a collapsible container: a one-line preview when closed, the
+// labelled children when open. Open near the root or when small.
+function box(v, rows, d, open) {
+  if (!rows.length) return h("span", { class: "v-void" }, kindOf(v) + " (empty)");
+  const k = kindOf(v), x = v[k], n = rows.length, one = n === 1;
+  const label = k === "vec" ? n + (one ? " item" : " items")
+    : k === "map" ? n + (x.every((e) => kindOf(e.key) === "symbol") ? (one ? " field" : " fields") : (one ? " entry" : " entries")) : "contract instance";
+  const det = h("details", { class: "v" }, h("summary", {}, label, h("span", { class: "pv" }, preview(v, 90))),
+    h("div", { class: "kv" }, rows.map(([key, val, sym]) => [h("span", { class: "k" + (sym ? " sym" : "") }, key), h("span", {}, val)])));
+  det.open = open || d < 2 || rows.length <= 4;
+  return det;
+}
+// pv writes a value as one line of text, Stellar Expert style
+// (10000000i128, [GCRY…E3OU], {amount: 250000000i128, …}). Text only: it
+// is always set through textContent.
+function pv(v, depth) {
+  if (v === "void") return "void";
+  if (v === "ledger_key_contract_instance") return "instance";
+  const k = kindOf(v), x = k && v[k];
+  if (!k) return iso(JSON.stringify(v));
+  if (NUMS.has(k) || k === "timepoint" || k === "duration") return x + k;
+  switch (k) {
+    case "bool": return String(x);
+    case "symbol": return iso(plain(xdrText(x).t));
+    case "string": { const t = plain(xdrText(x).t); return '"' + iso(JSON.stringify(t.length > 40 ? t.slice(0, 40) + "…" : t).slice(1, -1)) + '"'; }
+    case "address": return short(x);
+    case "bytes": return "0x" + short(x, 8, 0);
+    case "error": return errText(x);
+    case "ledger_key_nonce": return "nonce " + x.nonce;
+    case "vec": {
+      if (!x) return "none";
+      if (depth <= 0) return "[…" + x.length + "]";
+      const items = x.slice(0, 8).map((e) => pv(e, depth - 1)).join(", ") + (x.length > 8 ? ", …" : "");
+      // A vec led by a symbol is how a Rust enum variant is encoded.
+      if (kindOf(x[0]) === "symbol") return x.length === 1 ? pv(x[0], 0) : pv(x[0], 0) + "(" + x.slice(1, 8).map((e) => pv(e, depth - 1)).join(", ") + (x.length > 8 ? ", …" : "") + ")";
+      return "[" + items + "]";
+    }
+    case "map": {
+      if (!x) return "none";
+      if (depth <= 0) return "{…" + x.length + "}";
+      return "{" + x.slice(0, 6).map((e) => pv(e.key, 0) + ": " + pv(e.val, depth - 1)).join(", ") + (x.length > 6 ? ", …+" + (x.length - 6) : "") + "}";
+    }
+    case "contract_instance": return "instance · " + (x.executable === "stellar_asset" ? "Stellar Asset Contract" : "wasm " + short((x.executable && x.executable.wasm) || "", 6, 0));
+  }
+  return k;
+}
+// preview cuts a long line, closing any isolate the cut left open.
+function preview(v, max = 80) {
+  const s = pv(v, 3);
+  if (s.length <= max) return s;
+  const t = s.slice(0, max - 1), open = t.split("\u2068").length - t.split("\u2069").length;
+  return t + "\u2069".repeat(Math.max(0, open)) + "…";
+}
+// keyText writes a key inline when it is small and flat (a symbol, a
+// number, an address, a vec of those — e.g. the [Escrow] storage keys).
+const FLAT = new Set(["symbol", "string", "u32", "i32", "u64", "i64", "u128", "i128", "address", "bool"]);
+function keyText(k) {
+  if (FLAT.has(kindOf(k))) return pv(k, 0);
+  if (kindOf(k) === "vec" && k.vec && k.vec.length <= 4 && k.vec.every((e) => FLAT.has(kindOf(e)))) return "[" + k.vec.map((e) => pv(e, 0)).join(", ") + "]";
+  return null;
+}
+function keyShown(j, raw) {
+  if (j == null) return raw ? undecoded(raw) : "";
+  if (j === "ledger_key_contract_instance") return value(j);
+  const t = keyText(j);
+  return t === null ? value(j, 3) : h("span", { class: "v-sym", title: JSON.stringify(j) }, t);
+}
+// raw is the escape hatch for checking the server's decoding: the base64
+// the API served beside the JSON it rendered, and the CLI line that
+// reproduces it independently.
+function raw(items, type = "ScVal") {
+  items = items.filter((it) => it.b || it.j !== undefined);
+  if (!items.length) return null;
+  return h("details", { class: "raw" }, h("summary", {}, "xdr"),
+    items.map((it) => [
+      it.b ? [h("div", { class: "note" }, it.label + " · base64"), h("code", { class: "sel" }, it.b)] : null,
+      it.j !== undefined ? [h("div", { class: "note" }, it.label + " · JSON"), h("code", {}, JSON.stringify(it.j))] : null]),
+    h("div", { class: "hint" }, "stellar xdr decode --type " + type + " --output json <base64>"));
+}
+
+/* ---- state diffs: what changed between pre and post, by path ---- */
+function pathKey(k) {
+  if (kindOf(k) === "symbol") return "." + iso(plain(xdrText(k.symbol).t));
+  const t = keyText(k) ?? pv(k, 1);
+  return t[0] === "[" ? t : "[" + t + "]";
+}
+// nodes flattens a value into its paths. p is the path shown, q an exact
+// one (JSON keys), so two keys that print alike never merge; anc lists the
+// q of every enclosing node.
+function nodes(v, p, q, anc, out) {
+  const k = kindOf(v), x = k && v[k], kids = [];
+  if (k === "vec" && x) x.forEach((e, i) => kids.push([e, p + "[" + i + "]", q + "/" + i]));
+  else if (k === "map" && x) for (const e of x) kids.push([e.val, p + pathKey(e.key), q + "/" + JSON.stringify(e.key)]);
+  else if (k === "contract_instance") {
+    const ex = x.executable;
+    kids.push([ex === "stellar_asset" ? { symbol: "stellar_asset" } : { bytes: (ex && ex.wasm) || "" }, p + ".executable", q + "/executable"],
+      [{ map: x.storage }, p + ".storage", q + "/storage"]);
+  }
+  out.set(q, { p: p || "(value)", v, anc, leaf: !kids.length });
+  for (const [cv, cp, cq] of kids) nodes(cv, cp, cq, [...anc, q], out);
+  return out;
+}
+// scvDiff lists what changed from a to b as [path, old, new]: a changed
+// leaf once, and a subtree that appeared or vanished (a new milestone) as
+// one entry at its root, not one per field.
+function scvDiff(a, b) {
+  const A = nodes(a, "", "", [], new Map()), B = nodes(b, "", "", [], new Map()), out = [], done = new Set();
+  const covered = (q, n) => done.has(q) || n.anc.some((x) => done.has(x));
+  const report = (q, old, now) => { done.add(q); out.push([(B.get(q) || A.get(q)).p, old, now]); };
+  for (const [q, n] of B) {
+    if (!n.leaf || covered(q, n)) continue;
+    const o = A.get(q);
+    if (o && o.leaf) { if (JSON.stringify(o.v) !== JSON.stringify(n.v)) out.push([n.p, o.v, n.v]); continue; }
+    if (o) { report(q, o.v, n.v); continue; } // a container became a leaf
+    const was = n.anc.find((x) => A.has(x) && A.get(x).leaf); // a leaf became a container
+    if (was !== undefined) { report(was, A.get(was).v, B.get(was).v); continue; }
+    const top = n.anc.concat(q).find((x) => !A.has(x));
+    report(top, undefined, B.get(top).v);
+  }
+  for (const [q, n] of A) {
+    if (!n.leaf || covered(q, n) || B.has(q)) continue;
+    const top = n.anc.concat(q).find((x) => !B.has(x));
+    report(top, A.get(top).v, undefined);
+  }
+  return out;
+}
+function change(c) {
+  if (!c.pre && c.post) return shown(c.postJson, c.post, 1);
+  if (c.pre && !c.post) return h("span", {}, "was ", shown(c.preJson, c.pre, 1));
+  if (!c.pre) return "";
+  if (c.pre === c.post) return h("span", { class: "badge", title: "the transaction wrote this entry back byte-identical" }, "rewritten, no change");
+  if (c.preJson == null || c.postJson == null) return h("span", {}, shown(c.preJson, c.pre, 1), h("span", { class: "arrow" }, "→"), shown(c.postJson, c.post, 1));
+  const ch = scvDiff(c.preJson, c.postJson), LIM = 20;
+  const li = ([p, x, y]) => h("li", {}, h("span", { class: "p" }, p),
+    x === undefined ? h("span", { class: "badge" }, "added") : h("span", { class: "dold" }, value(x, 9)), h("span", { class: "arrow" }, "→"),
+    y === undefined ? h("span", { class: "badge warn" }, "gone") : h("span", { class: "dnew" }, value(y, 9)));
+  const list = h("ul", { class: "diff" }, ch.slice(0, LIM).map(li));
+  if (!ch.length) list.append(h("li", { class: "note" }, "no decoded difference"));
+  if (ch.length > LIM) {
+    const more = h("a", { href: "#", class: "more", onclick: (e) => { e.preventDefault(); more.parentNode.remove(); list.append(...ch.slice(LIM).map(li)); } }, "show all " + ch.length + " changed paths");
+    list.append(h("li", {}, more));
+  }
+  const side = h("div", { class: "side", hidden: true }, h("div", {}, h("div", { class: "note" }, "pre"), value(c.preJson, 1)), h("div", {}, h("div", { class: "note" }, "post"), value(c.postJson, 1)));
+  const toggle = h("a", { href: "#", class: "more", onclick: (e) => { e.preventDefault(); side.hidden = !side.hidden; } }, "pre/post side by side");
+  return h("div", {}, list, toggle, side);
+}
+
+/* ---- amounts: scaled only when the server proved the token ---- */
+const group = (s) => s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+// fmtUnits scales an integer amount with string math only: amounts are
+// i128, far past what a float holds exactly.
+function fmtUnits(raw, dec) {
+  const neg = raw[0] === "-", digits = (neg ? raw.slice(1) : raw).replace(/^0+(?=\d)/, "");
+  if (!/^\d+$/.test(digits)) return raw;
+  if (!dec) return (neg ? "-" : "") + group(digits);
+  const p = digits.padStart(dec + 1, "0"), f = p.slice(-dec).replace(/0+$/, "");
+  return (neg ? "-" : "") + group(p.slice(0, -dec)) + (f ? "." + f : "");
+}
+const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+const okDec = (d) => Number.isInteger(d) && d >= 0 && d <= 38;
+// signed prints a BigInt amount with an explicit sign, once.
+const signed = (n, dec) => (n < 0n ? "−" : n > 0n ? "+" : "") + fmtUnits((n < 0n ? -n : n).toString(), dec);
+const assetCode = (a) => a === "native" ? "XLM" : plain(a.split(":")[0]);
+const assetSE = (a) => a === "native" ? "XLM" : a.replace(":", "-");
+function amountCell(m, dir) {
+  let n;
+  try { n = BigInt(m.amount) * (dir === "in" ? 1n : -1n); } catch { return h("span", { class: "amt" }, String(m.amount)); }
+  if (m.asset && okDec(m.decimals)) {
+    return h("span", { class: "addrw", title: "raw " + m.amount + " · " + m.decimals + " decimals: the token is proven to be the Stellar Asset Contract of " + m.asset },
+      h("span", { class: "amt " + dir }, signed(n, m.decimals)), " ", assetCode(m.asset), " ", h("span", { class: "badge ok" }, "SAC ✓"));
+  }
+  return h("span", { class: "addrw" }, h("span", { class: "amt " + dir }, signed(n, 0)), " ",
+    h("span", { class: "note", title: "the token is not a proven Stellar Asset Contract: its decimals are in no payload, so the raw integer is shown" }, "raw units, decimals unknown"));
+}
+function tokenCell(id, asset) {
+  return asset ? h("span", { class: "addrw" }, h("span", { class: "badge ok", title: "asset name hashes to this contract id: a genuine SAC" }, assetCode(asset)), ext("asset", assetSE(asset)), " ", addr(id)) : addr(id);
+}
 
 /* ---- instance status ---- */
+let STATUS = null;
 async function refreshStatus() {
   try {
-    const s = await getJSON("/status");
+    const s = STATUS = await getJSON("/status");
+    NET = s.network;
     $("readydot").className = "dot" + (s.ready ? " ok" : "");
-    $("instlabel").textContent = s.network + " · " + s.version;
-    $("statusdl").innerHTML =
-      "<dt>Cursor</dt><dd class='mono'>" + s.cursor_sequence + " (tip " + s.latest_known_ledger + ")</dd>" +
-      "<dt>Tip lag</dt><dd>" + s.tip_lag_seconds.toFixed(1) + " s</dd>" +
-      "<dt>Ready</dt><dd>" + (s.ready ? "yes" : "catching up") + "</dd>" +
-      "<dt>Pending backfills</dt><dd>" + s.pending_backfills + "</dd>" +
-      "<dt>Open gaps</dt><dd>" + s.open_gaps + "</dd>" +
-      "<dt>Archive leg</dt><dd>" + esc(s.archive) + "</dd>" +
-      "<dt>Started</dt><dd>" + when(s.started_at.slice(0, 19)) + "</dd>";
+    $("instlabel").textContent = s.network + " · " + s.version + (s.deferred_gaps ? " · " + s.deferred_gaps + " deferred gaps" : "");
+    const dl = [["Cursor", s.cursor_sequence + " (tip " + s.latest_known_ledger + ")"], ["Tip lag", Number(s.tip_lag_seconds || 0).toFixed(1) + " s"],
+      ["Ready", s.ready ? "yes" : "catching up"], ["Pending backfills", s.pending_backfills],
+      ["Open gaps", s.open_gaps + (s.gaps_pending_heal != null ? " — " + s.gaps_pending_heal + " pending heal, " + s.deferred_gaps + " deferred (" + group(String(s.deferred_ledgers || 0)) + " ledgers never read)" : "")],
+      ["Source failovers", s.source_failovers ?? "—"],
+      ["Archive leg", s.archive === "unverified" ? "unverified (it proves itself the first time a gap needs healing)" : s.archive],
+      ["Started", when(s.started_at)]];
+    $("statusdl").replaceChildren(...dl.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, String(v))]));
   } catch (e) {
     $("instlabel").textContent = "unreachable";
     $("readydot").className = "dot";
   }
 }
 
-/* ---- contracts ---- */
-let selected = null;
-let allContracts = [];
-
-async function refreshContracts() {
-  const body = $("contracts").querySelector("tbody");
-  try {
-    const d = await getJSON("/v1/contracts");
-    allContracts = d.contracts;
-    renderContracts();
-  } catch (e) { errBox(body, e); }
+/* ---- contract list: loaded once, searched here ---- */
+// The list is fetched once and on demand, not polled: at 1,285 contracts it
+// is ~600 KB, and it changes only when someone registers. Search, facets
+// and paging run over the copy in memory.
+let LIST = [], LOADED_AT = null, LISTQ = new URLSearchParams(), FILTERED = [], SHOWN = 0, LISTKEY = null, LIST_Y = 0;
+const PAGE = 100;
+async function loadList() {
+  const d = await getJSON("/v1/contracts");
+  LIST = d.contracts || [];
+  REGISTERED = new Set(LIST.map((c) => c.contract_id));
+  LOADED_AT = new Date();
+  LISTKEY = null;
+  const facet = (sel, label, key, text) => {
+    const n = new Map();
+    for (const c of LIST) { const v = key(c); n.set(v, (n.get(v) || 0) + 1); }
+    sel.replaceChildren(h("option", { value: "" }, label), ...[...n].sort((a, b) => b[1] - a[1]).map(([v, k]) => h("option", { value: v }, text(v) + " · " + k)));
+  };
+  facet($("fcode"), "any code", (c) => c.classification?.wasm_hash || "none", (v) => v === "none" ? "no wasm" : v.slice(0, 6));
+  facet($("ftype"), "any type", (c) => c.classification?.type || "?", (v) => v);
 }
-
-// The filter is client-side over the already-fetched list: /v1/contracts
-// returns the whole registry anyway, so matching here costs no request.
-function contractsMatching(q) {
-  if (!q) return allContracts;
-  return allContracts.filter((c) =>
-    c.contract_id.toLowerCase().includes(q) ||
-    (c.classification?.type || "").toLowerCase().includes(q) ||
-    c.kinds.some((k) => k.toLowerCase().includes(q)));
+function filterList(q) {
+  const needle = (q.get("q") || "").trim(), code = q.get("code") || "", type = q.get("type") || "";
+  const up = needle.toUpperCase(), low = needle.toLowerCase();
+  return LIST.filter((c) => {
+    const wh = c.classification?.wasm_hash || "";
+    return (!needle || c.contract_id.includes(up) || (wh && wh.startsWith(low)))
+      && (!code || (code === "none" ? !wh : wh === code)) && (!type || (c.classification?.type || "?") === type);
+  });
 }
-
-// Sorting is offered only here, where the whole registry is in hand. The
-// data tabs stay unsorted on purpose: they page through a cursor, and
-// sorting one page would read as sorting the whole history.
-const SORTKEYS = {
+function setSel(sel, v) {
+  v = v || "";
+  if (![...sel.options].some((o) => o.value === v)) sel.append(h("option", { value: v }, short(v, 6, 0) + " · 0"));
+  sel.value = v;
+}
+function listQuery() {
+  return new URLSearchParams([["q", $("q").value.trim()], ["code", $("fcode").value], ["type", $("ftype").value]].filter(([, v]) => v));
+}
+// Sorting is offered only on this table, where the whole registry is in
+// hand. The data tabs stay unsorted on purpose: they page through a
+// cursor, and sorting one fetched page would read as sorting the history.
+const SORTGET = {
   contract: (c) => c.contract_id,
   type: (c) => c.classification?.type || "",
-  kinds: (c) => c.kinds.join(","),
+  code: (c) => c.classification?.wasm_hash || "",
+  kinds: (c) => (c.kinds || []).join(","),
   registered: (c) => c.registered_at || "",
 };
-let sortKey = null;
-let sortDir = 1;
-
-function sortClick(key) {
-  if (sortKey === key) sortDir = -sortDir;
-  else { sortKey = key; sortDir = 1; }
-  renderContracts();
-}
-
+let SORTKEY = null, SORTDIR = 1;
 for (const th of document.querySelectorAll("#contracts thead th")) {
   th.dataset.label = th.textContent;
-  th.onclick = () => sortClick(th.dataset.sort);
+  th.onclick = () => {
+    if (SORTKEY === th.dataset.sort) SORTDIR = -SORTDIR;
+    else { SORTKEY = th.dataset.sort; SORTDIR = 1; }
+    renderList(LISTQ);
+  };
 }
 
-function renderContracts() {
-  const body = $("contracts").querySelector("tbody");
-  const q = $("csearch").value.trim().toLowerCase();
-  let list = contractsMatching(q);
-  if (sortKey) {
-    const get = SORTKEYS[sortKey];
-    list = [...list].sort((a, b) => sortDir * get(a).localeCompare(get(b)));
-  }
+// renderList keeps the rendered rows when nothing changed, so search,
+// "show more" and scroll survive a round trip to a contract.
+function renderList(q) {
+  LISTQ = q;
+  const key = String(q) + "|" + SORTKEY + ":" + SORTDIR + "|" + (LOADED_AT ? LOADED_AT.getTime() : "");
+  if (key === LISTKEY) return;
+  LISTKEY = key;
+  $("q").value = q.get("q") || ""; setSel($("fcode"), q.get("code")); setSel($("ftype"), q.get("type"));
   for (const th of document.querySelectorAll("#contracts thead th")) {
-    th.textContent = th.dataset.label +
-      (th.dataset.sort === sortKey ? (sortDir > 0 ? " ▲" : " ▼") : "");
+    th.textContent = th.dataset.label + (th.dataset.sort === SORTKEY ? (SORTDIR > 0 ? " ▲" : " ▼") : "");
   }
-  $("nocontracts").hidden = allContracts.length > 0;
-  $("csearchform").hidden = allContracts.length === 0;
-  $("ccount").textContent = q
-    ? list.length + " of " + allContracts.length + " shown"
-    : allContracts.length + " registered";
-  body.innerHTML = list.map((c) =>
-    "<tr data-id='" + esc(c.contract_id) + "'" + (c.contract_id === selected ? " class='sel'" : "") + ">" +
-    "<td class='mono' title='" + esc(c.contract_id) + "'>" + short(c.contract_id, 8) + "</td>" +
-    "<td>" + esc(c.classification?.type || "?") + "</td>" +
-    "<td>" + c.kinds.map(esc).join(", ") + "</td>" +
-    "<td>" + when(c.registered_at) + "</td></tr>"
-  ).join("") || (q ? "<tr><td colspan='4' class='note'>nothing matches that filter</td></tr>" : "");
-  for (const tr of body.querySelectorAll("tr[data-id]")) {
-    tr.onclick = () => selectContract(tr.dataset.id);
+  FILTERED = filterList(q); SHOWN = 0;
+  if (SORTKEY) {
+    const get = SORTGET[SORTKEY];
+    FILTERED = [...FILTERED].sort((a, b) => SORTDIR * get(a).localeCompare(get(b)));
   }
+  $("contracts").tBodies[0].replaceChildren();
+  $("nocontracts").hidden = LIST.length > 0;
+  $("loadedat").textContent = LOADED_AT ? "list loaded " + LOADED_AT.toISOString().slice(11, 19) + " UTC · counts, coverage and activity are on each contract's page" : "";
+  moreRows();
+}
+function moreRows() {
+  const rows = FILTERED.slice(SHOWN, SHOWN + PAGE);
+  SHOWN += rows.length;
+  $("contracts").tBodies[0].append(...rows.map((c) => {
+    const wh = c.classification?.wasm_hash;
+    return h("tr", {},
+      h("td", {}, h("a", { class: "mono cid sel", href: "#/c/" + c.contract_id }, c.contract_id)),
+      h("td", {}, c.classification?.type || "?"),
+      h("td", {}, wh ? h("a", { class: "chip mono", href: "#/?code=" + encodeURIComponent(wh), title: wh + " — show every contract running this code" }, wh.slice(0, 6)) : ""),
+      h("td", {}, (c.kinds || []).join(", ")),
+      h("td", { class: "nw" }, when(c.registered_at)));
+  }));
+  $("listmore").hidden = SHOWN >= FILTERED.length;
+  $("listcount").textContent = "(" + (FILTERED.length !== LIST.length ? FILTERED.length + " of " : "") + LIST.length + (SHOWN < FILTERED.length ? ", showing " + SHOWN : "") + ")";
+}
+let qTimer = null;
+function applyFilter() {
+  clearTimeout(qTimer);
+  if ($("view-list").hidden) return; // a contract opened before the search settled
+  $("listmsg").replaceChildren();
+  const q = listQuery();
+  history.replaceState(null, "", "#/" + (String(q) ? "?" + q : ""));
+  renderList(q);
+}
+$("q").oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(applyFilter, 120); };
+$("fcode").onchange = applyFilter; $("ftype").onchange = applyFilter;
+$("listmore").onclick = moreRows;
+// Enter with a full contract id opens it; one that is not registered here
+// says so, with the way to look it up elsewhere.
+$("q").onkeydown = (e) => {
+  if (e.key !== "Enter") return;
+  applyFilter();
+  const v = $("q").value.trim().toUpperCase();
+  if (strkeyBytes("C", v)) {
+    if (REGISTERED.has(v)) location.hash = "#/c/" + v;
+    else $("listmsg").replaceChildren(h("div", { class: "err" }, v + " is not registered here. ", ext("contract", v, "Stellar Expert ↗")));
+  } else if (FILTERED.length === 1) location.hash = "#/c/" + FILTERED[0].contract_id;
+};
+$("reload").onclick = async () => { try { await loadList(); renderList(LISTQ); } catch (e) { $("loadedat").replaceChildren(errNode(e)); } };
+
+/* ---- contract page ---- */
+let DETAIL = null; // { id, d }
+const TABS = [["events", "Events", "events"], ["state", "State", "state"], ["history", "State history", "state"], ["movements", "Movements", "movements"],
+  ["transfers", "Transfers", "transfers"], ["trustlines", "Trustlines", "trustlines"], ["tlhistory", "TL history", "trustlines"]];
+const KINDS = ["events", "state", "transfers", "trustlines", "movements"];
+const kindOfTab = (tab) => (TABS.find((t) => t[0] === tab) || [])[2];
+const firstTab = (kinds) => (TABS.find((t) => kinds.includes(t[2])) || TABS[0])[0];
+// isBelow compares against the vouched start alone: an endLedger below it
+// leaves indexedToLedger under indexedFromLedger, and those rows are exactly
+// the ones that must be marked.
+const isBelow = (ledger, cov) => !!cov && cov.kindDerived !== false && ledger < cov.indexedFromLedger;
+// vouchedText words a data response's coverage for its status line.
+function vouchedText(cov) {
+  const from = cov.indexedFromLedger, to = cov.indexedToLedger, req = cov.requestedToLedger;
+  if (from <= to) return "vouched " + from + "–" + to;
+  if (req != null && req < from) return "the requested range lies entirely below the vouched start (ledger " + from + ")";
+  if (cov.requestedFromLedger > to) return "the requested range starts past the cursor (ledger " + to + ")";
+  return "nothing vouched for yet";
 }
 
-$("csearch").oninput = renderContracts;
-
-async function selectContract(id) {
-  selected = id;
-  if (allContracts.length) renderContracts();
-  $("detail").hidden = false;
-  $("dtitle").textContent = id;
-  $("dinfo").innerHTML = "<p class='note'>loading…</p>";
-  try {
-    const d = await getJSON("/v1/contracts/" + id);
-    // Coverage is per kind: a contract does not have one range, its kinds do.
-    coverageByKind = {};
-    for (const c of d.coverage || []) coverageByKind[c.kind] = c;
-    const evs = (d.classification?.events || []).map(esc).join(", ");
-    const counts = Object.entries(d.events?.by_name || d.events?.byName || {})
-      .map(([k, v]) => esc(k || "(unnamed)") + ": " + v).join(" · ");
-    $("dinfo").innerHTML =
-      "<div class='statusline'>type <b>" + esc(d.classification?.type) + "</b> (" + esc(d.classification?.method) + ")" +
-      " · kinds: <b>" + d.kinds.map(esc).join(", ") + "</b>" +
-      " · registered " + when(d.registered_at) + "</div>" +
-      (evs ? "<div class='statusline'>declared events: " + evs + "</div>" : "") +
-      (d.coverage || []).map((cov) =>
-        "<div class='statusline'>coverage <b>" + esc(cov.kind) + "</b>: ledgers <b class='mono'>" +
-        cov.indexedFromLedger + " – " + cov.indexedToLedger + "</b>" +
-        (cov.backfillPending ? " <span class='badge warn'>backfill running</span>" : " <span class='badge'>backfill done</span>") +
-        (cov.clampedAt ? " <span class='badge warn'>clamped at " + cov.clampedAt + "</span>" : "") + "</div>"
-      ).join("") +
-      "<div class='statusline'>stored: <b>" + (d.events?.total ?? 0) + "</b> events · <b>" + (d.state?.entries ?? 0) + "</b> live state entries" +
-      (counts ? " — " + counts : "") + "</div>" +
-      "<p><button class='plain' id='unreg'>Unregister this contract</button> <span class='note'>data is kept; re-registering resumes</span></p>" +
-      "<div id='unregmsg'></div>";
-    $("unreg").onclick = unregister;
-  } catch (e) { errBox($("dinfo"), e); }
-  renderTabs();
-  openTab(currentTab);
+function coverageBox(d) {
+  const cov = (d.coverage || []).filter((c) => c.kindDerived !== false);
+  const s = STATUS || {};
+  if (!cov.length && !s.deferred_gaps) return null;
+  // Kinds usually share one window; say it once when they do.
+  const sig = (c) => [c.indexedFromLedger, c.indexedToLedger, c.clampedAt, c.backfillPending].join();
+  const groups = new Map();
+  for (const c of cov) groups.set(sig(c), [...(groups.get(sig(c)) || []), c]);
+  return h("div", { class: "cov" }, [...groups.values()].map((g) => {
+    const c = g[0], empty = c.indexedFromLedger > c.indexedToLedger;
+    return h("div", {}, h("b", {}, g.map((x) => x.kind).join(", ")), ": ",
+      empty ? "nothing vouched for yet (the registration is settling)" : ["vouched from ledger ", ledgerRef(c.indexedFromLedger), " to ", ledgerRef(c.indexedToLedger), " (the cursor)"],
+      c.backfillPending ? [" · ", h("span", { class: "badge warn" }, "backfill running")] : " · backfill done",
+      c.clampedAt ? [" · ", h("span", { class: "badge warn", title: "the backfill reached the RPC retention wall here; older history comes from healed archive ranges" }, "clamped at " + c.clampedAt)] : null);
+  }), s.deferred_gaps ? h("div", {}, "This instance deliberately did not read " + group(String(s.deferred_ledgers || 0)) + " ledgers (" + s.deferred_gaps +
+    " deferred gaps). Rows older than a kind's vouched start come from healed ranges: each row is real, but where none appear, nothing is proven.") : null);
+}
+function navLine(id, tab) {
+  const i = FILTERED.findIndex((c) => c.contract_id === id);
+  if (i < 0) return h("span", { class: "off" }, "not in the current list");
+  const link = (c, label) => c ? h("a", { href: "#/c/" + c.contract_id + (tab && (c.kinds || []).includes(kindOfTab(tab)) ? "/" + tab : ""), title: c.contract_id }, label) : h("span", { class: "off" }, label);
+  return h("span", {}, link(FILTERED[i - 1], "‹ prev"), " · " + (i + 1) + "/" + FILTERED.length + " · ", link(FILTERED[i + 1], "next ›"));
+}
+function renderDetailHead(id, d) {
+  const cl = d.classification || {}, wh = cl.wasm_hash;
+  const same = wh ? LIST.filter((c) => c.classification?.wasm_hash === wh).length : 0;
+  const byName = Object.entries(d.events?.by_name || {}).sort((a, b) => b[1] - a[1]);
+  const declared = cl.events || [];
+  const row = (k, ...v) => [h("dt", {}, k), h("dd", {}, ...v)];
+  const disjoint = declared.length && byName.length && !byName.some(([n]) => declared.includes(n));
+  $("dinfo").replaceChildren(
+    h("dl", { class: "summary" },
+      row("type", h("b", {}, cl.type || "?"), cl.method ? " (" + cl.method + ")" : ""),
+      wh ? row("code", h("span", { class: "mono", title: wh }, short(wh, 10, 6)), same > 1 ? [" · ", h("a", { href: "#/?code=" + encodeURIComponent(wh) }, same + " contracts run this code")] : null) : [],
+      row("kinds", (d.kinds || []).join(", ")),
+      row("registered", when(d.registered_at)),
+      row("stored", plural(d.events?.total ?? 0, "event", "events") + " · " + plural(d.state?.entries ?? 0, "live state entry", "live state entries")),
+      // A name is a topic0 symbol, so its chip filters on that symbol even
+      // when the bare name would read as something else ("instance").
+      byName.length ? row("event names seen", byName.map(([n, k]) => SYM.test(n)
+        ? h("a", { class: "chip", href: "#/c/" + id + "/events?topic0=" + encodeURIComponent(readFilter(n).as === "symbol" ? n : "sym:" + n), title: "show these events" }, n + " · " + k)
+        : h("span", { class: "chip", title: "topic0 is not a symbol" }, (n ? iso(plain(n)) : "(no symbol name)") + " · " + k))) : [],
+      declared.length ? row("declared in spec", h("span", { class: "note", title: "names read from the contract spec at registration; what it emits can differ" }, declared.map((n) => iso(plain(n))).join(", ")),
+        disjoint ? h("div", { class: "note" }, "none of the declared names were observed: the emitted topic names differ") : null) : []),
+    coverageBox(d) || "");
+}
+function renderActions(id) {
+  const msg = h("div", { id: "unregmsg" });
+  $("dactions").replaceChildren(
+    h("button", { class: "plain", title: "copy the contract id", onclick: () => copy(id) }, "copy"),
+    h("span", {}, "Stellar Expert: ", ext("contract", id, "contract ↗"), " ", ext("contract", id, "events ↗", "?filter=events"), " ", ext("contract", id, "storage ↗", "/storage")),
+    h("a", { href: "#", onclick: (e) => { e.preventDefault(); unregister(id, msg); } }, "Unregister"), msg);
 }
 
-async function unregister() {
-  if (!confirm("Unregister " + selected + "? Indexed data is kept.")) return;
-  try {
-    const r = await fetch(api("/v1/contracts/" + selected), {
-      method: "DELETE",
-      headers: { Authorization: "Bearer " + $("token").value },
-    });
-    if (!r.ok && r.status !== 204) {
-      const b = await r.json().catch(() => ({}));
-      throw new Error(b.error || r.status + " " + r.statusText);
+async function showDetail(id, tab, q, gen, signal) {
+  $("view-list").hidden = true; $("view-detail").hidden = false;
+  CURRENT = id;
+  $("backlink").href = "#/" + (String(LISTQ) ? "?" + LISTQ : "");
+  if (!DETAIL || DETAIL.id !== id) {
+    DETAIL = null; // the header is being replaced: nothing cached describes it until the fetch lands
+    window.scrollTo(0, 0);
+    $("dtitle").textContent = id; renderActions(id);
+    $("dinfo").replaceChildren(h("p", { class: "note" }, "loading…"));
+    $("tabs").replaceChildren(); $("notderived").replaceChildren(); $("tabbody").replaceChildren();
+    try {
+      const d = await getJSON("/v1/contracts/" + id, signal);
+      if (gen !== GEN) return;
+      DETAIL = { id, d };
+      renderDetailHead(id, d);
+    } catch (e) {
+      if (gen !== GEN || aborted(e)) return;
+      DETAIL = null;
+      $("dinfo").replaceChildren(errNode(e), REGISTERED.has(id) ? "" : h("p", { class: "note" }, "Not registered here. ", ext("contract", id, "Look it up in Stellar Expert ↗")));
+      $("navline").replaceChildren();
+      return;
     }
-    $("detail").hidden = true;
-    selected = null;
-    syncHash();
-    refreshContracts();
-  } catch (e) { errBox($("unregmsg"), e); }
+  }
+  if (!tab) tab = firstTab(DETAIL.d.kinds || []);
+  DETAIL.tab = tab;
+  renderTabs(id, tab, DETAIL.d.kinds || []);
+  if (!Object.hasOwn(VIEWS, tab)) { $("tabbody").replaceChildren(errNode("unknown tab " + tab)); return; }
+  return dataTab(id, tab, q, gen, signal);
+}
+function renderTabs(id, tab, kinds) {
+  $("navline").replaceChildren(navLine(id, tab));
+  // Tabs only for kinds this contract derives; the others are named once,
+  // because "not indexed" is not the same as "nothing happened".
+  $("tabs").replaceChildren(...TABS.filter((t) => kinds.includes(t[2]) || t[0] === tab).map(([k, label]) =>
+    h("a", { href: "#/c/" + id + "/" + k, class: k === tab ? "active" : null, "aria-current": k === tab ? "page" : null }, label)));
+  const off = KINDS.filter((k) => !kinds.includes(k));
+  $("notderived").textContent = off.length ? "not derived here: " + off.join(", ") + " — nothing was ever indexed for them, which is not the same as nothing having happened" : "";
 }
 
-/* ---- register ---- */
+/* ---- per-kind tables ---- */
+const SMART = new Set(["topic0", "topic1", "key"]);
+const BELOW_TITLE = "older than the oldest ledger this instance vouches for: the row is real, the range around it is not proven complete";
+const topicsCell = (e) => h("span", {}, (e.topic || []).map((t, i) => i === 0 && e.eventName ? null : [i > (e.eventName ? 1 : 0) ? " · " : "", keyShown(e.topicJson ? e.topicJson[i] : undefined, t)]));
+const VIEWS = {
+  events: {
+    path: "/events", list: "events", limit: 50, json: true,
+    filters: [["topic0", "topic0: name, address, [vec], instance or base64"], ["topic1", "topic1"], ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
+    head: ["ledger", "closed at", "event", "topics", "value", "tx", ""],
+    row: (e) => [ledgerRef(e.ledger), when(e.ledgerClosedAt), e.eventName ? h("span", { class: "v-sym" }, textNodes(e.eventName)) : h("span", { class: "note" }, "—"),
+      topicsCell(e), shown(e.valueJson, e.value), txRef(e.id, e.txHash),
+      raw([...(e.topic || []).map((t, i) => ({ label: "topic" + i, b: t, j: e.topicJson ? e.topicJson[i] : undefined })), { label: "value", b: e.value, j: e.valueJson }])],
+  },
+  state: {
+    path: "/state", list: "entries", limit: 25, json: true,
+    filters: [["key", "key: name, [vec], address, instance or base64"]],
+    head: ["key", "value", "durability", "last modified", ""],
+    row: (s, id) => [keyShown(s.keyJson, s.key), shown(s.valueJson, s.value), s.durability,
+      h("span", {}, ledgerRef(s.lastModifiedLedger), h("div", { class: "note" }, when(s.closedAt))),
+      h("span", {}, h("a", { href: "#/c/" + id + "/history?key=" + encodeURIComponent(s.key) }, "History of this key →"), raw([{ label: "key", b: s.key, j: s.keyJson }, { label: "value", b: s.value, j: s.valueJson }]))],
+    at: (s) => s.lastModifiedLedger,
+    belowTitle: "last modified before the vouched range: the entry is real, but a later change inside an unread range would not show here",
+    foot: (id) => h("p", { class: "note" }, "Sierpe does not track TTL or archival: an entry shown here may be archived on-chain. ", ext("contract", id, "Storage in Stellar Expert ↗", "/storage")),
+  },
+  history: {
+    path: "/state/history", list: "changes", limit: 25, json: true,
+    filters: [["key", "key: name, [vec], address, instance or base64"], ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
+    head: ["ledger", "closed at", "change", "key", "what changed", "tx", ""],
+    row: (c) => [ledgerRef(c.ledger), when(c.ledgerClosedAt), h("span", { class: "badge" + (c.changeType === "removed" ? " warn" : "") }, c.changeType),
+      keyShown(c.keyJson, c.key), change(c), txRef(c.id, c.txHash),
+      raw([{ label: "key", b: c.key, j: c.keyJson }, { label: "pre", b: c.pre, j: c.pre ? c.preJson : undefined }, { label: "post", b: c.post, j: c.post ? c.postJson : undefined }])],
+  },
+  movements: {
+    path: "/movements", list: "movements", limit: 100, json: true,
+    filters: [["role", "role", ["", "recipient", "sender"]], ["token", "token contract (C…)"], ["type", "type", ["", "transfer", "mint", "burn", "clawback"]], ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
+    head: ["ledger", "closed at", "direction", "amount", "counterparty", "token", "tx", ""],
+    row: (m) => {
+      const dir = m.role === "recipient" ? "in" : "out";
+      return [ledgerRef(m.ledger), when(m.ledgerClosedAt), h("span", {}, h("b", { class: dir }, dir.toUpperCase()), m.transferType !== "transfer" ? " · " + m.transferType : ""),
+        amountCell(m, dir), m.counterparty ? addr(m.counterparty) : h("span", { class: "note" }, m.transferType), tokenCell(m.tokenContractId, m.asset), txRef(m.id),
+        raw([{ label: "event", b: m.rawXdr }, { label: "topics", j: m.topicJson }, { label: "value", j: m.valueJson }], "ContractEvent")];
+    },
+    foot: (id) => sumBox(id),
+  },
+  transfers: {
+    path: "/transfers", list: "transfers", limit: 25,
+    filters: [["account", "account (either side)"], ["from", "from"], ["to", "to"], ["type", "type", ["", "transfer", "mint", "burn", "clawback"]], ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
+    head: ["ledger", "closed at", "type", "from", "to", "amount", "asset", "tx"],
+    row: (t) => [ledgerRef(t.ledger), when(t.ledgerClosedAt), t.transferType, t.from ? addr(t.from) : "", t.to ? addr(t.to) : "",
+      h("span", { class: "mono" }, t.amount), t.asset ? plain(t.asset) : "", txRef(t.id, t.txHash)],
+  },
+  trustlines: {
+    path: "/trustlines", list: "trustlines", limit: 25,
+    filters: [["account", "account (G…)"]],
+    head: ["account", "asset", "balance", "limit", "flags", "last modified"],
+    row: (t) => [addr(t.accountId), plain(t.asset), h("span", { class: "mono" }, t.balance), h("span", { class: "mono" }, t.limit), t.flags, ledgerRef(t.lastModifiedLedger)],
+    at: (t) => t.lastModifiedLedger,
+  },
+  tlhistory: {
+    path: "/trustlines/history", list: "changes", limit: 25,
+    filters: [["account", "account (G…)"], ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
+    head: ["ledger", "closed at", "change", "account", "pre balance", "post balance", "tx"],
+    row: (c) => [ledgerRef(c.ledger), when(c.ledgerClosedAt), c.changeType, addr(c.accountId), h("span", { class: "mono" }, c.preBalance || ""), h("span", { class: "mono" }, c.postBalance || ""), txRef(c.id, c.txHash)],
+  },
+};
+// Every read of a kind with XDR asks for the decoded JSON too; the base64
+// stays beside it (filters, links and the xdr disclosure use it).
+const dataURL = (id, t, qs) => "/v1/contracts/" + id + t.path + "?" + qs + (t.json ? "&xdrFormat=json" : "");
+
+async function dataTab(id, key, q, gen, signal) {
+  const t = VIEWS[key];
+  const params = [["limit", t.limit]], readings = [];
+  const inputs = t.filters.map(([name, label, opts]) => {
+    const v = q.get(name) || "";
+    let el;
+    if (opts) { el = h("select", { name }, opts.map((o) => h("option", { value: o }, o || "any " + name))); el.value = v; }
+    else el = h("input", { name, placeholder: label, size: Math.max(12, Math.min(label.length, 36)), value: v, spellcheck: "false", autocomplete: "off" });
+    if (!v) return el;
+    if (SMART.has(name)) {
+      const r = readFilter(v);
+      params.push([name, r ? r.b64 : v]);
+      readings.push(name + (r ? " read as " + r.as + ": " + r.b64 : ": not a symbol, sym:name, address, [vec], instance or base64 ScVal; sent as typed"));
+    } else params.push([name, v]);
+    return el;
+  });
+  const form = h("form", { class: "inline" }, inputs, h("button", { type: "submit" }, "Query"),
+    q.toString() ? h("a", { href: "#/c/" + id + "/" + key, class: "more" }, "clear") : null);
+  form.onsubmit = (ev) => {
+    ev.preventDefault();
+    const nq = new URLSearchParams([...new FormData(form)].filter(([, v]) => String(v).trim()));
+    location.hash = "#/c/" + id + "/" + key + (String(nq) ? "?" + nq : "");
+  };
+  const scan = h("div", { class: "statusline" }), body = h("tbody"), more = h("button", { class: "plain", hidden: true }, "Load more"), err = h("div");
+  $("tabbody").replaceChildren(form, readings.length ? h("div", { class: "hint" }, readings.join(" · ")) : "", scan,
+    h("div", { class: "tblwrap" }, h("table", {}, h("thead", {}, h("tr", {}, t.head.map((x) => h("th", {}, x)))), body)), more, err, t.foot ? t.foot(id) : "");
+  let cursor = null, loaded = 0, below = 0;
+  const load = async (next) => {
+    err.replaceChildren();
+    more.disabled = true;
+    try {
+      const d = await getJSON(dataURL(id, t, next ? "cursor=" + encodeURIComponent(cursor) : String(new URLSearchParams(params))), signal);
+      if (gen !== GEN) return;
+      const items = d[t.list] || [], cov = d.coverage;
+      for (const it of items) {
+        const tr = h("tr", {}, t.row(it, id).map((c) => h("td", {}, c)));
+        // Rows below the vouched range are marked and counted, never hidden.
+        if (isBelow(t.at ? t.at(it) : it.ledger, cov)) { tr.className = "below"; tr.title = t.belowTitle || BELOW_TITLE; below++; }
+        body.append(tr);
+      }
+      loaded += items.length;
+      if (!loaded) body.replaceChildren(h("tr", {}, h("td", { colspan: 9, class: "note" }, emptyHint(key))));
+      cursor = d.cursor || null;
+      more.hidden = !(cursor && (d.scanStatus === "HAS_MORE" || !("scanStatus" in d)));
+      let line = (d.scanStatus ? "scanStatus " + d.scanStatus + " · " : "") + plural(loaded, "row", "rows") + " loaded, oldest first (the API's order)";
+      if (cov && cov.kindDerived === false) {
+        line = "this contract does not derive the " + cov.kind + " kind — nothing was ever indexed here, which is not the same as nothing having happened";
+      } else if (cov) {
+        line += " · " + vouchedText(cov) +
+          (cov.backfillPending ? " (backfill running)" : "") +
+          (below ? " · " + below + " of " + loaded + " rows below the vouched range (marked)" : "");
+      }
+      // Some resources carry a caveat about what they are not (movements are
+      // not a balance); show it rather than letting a running total read as one.
+      if (d.note) line += " — " + d.note;
+      scan.textContent = line;
+    } catch (e) { if (!aborted(e) && gen === GEN) err.replaceChildren(errNode(e)); }
+    more.disabled = false;
+  };
+  more.onclick = () => load(true);
+  await load(false);
+}
+// emptyHint explains the most common surprise behind an empty page: asset
+// movements (plain payments) are recorded under the ASSET's own contract,
+// not under whoever received the money. Learned from the first user's
+// first test session.
+function emptyHint(key) {
+  let hint = "no rows";
+  if (key === "events" || key === "transfers") {
+    hint += " — tip: sending an asset TO a contract records a transfer under the asset's own SAC contract " +
+      "(e.g. XLM movements live under the XLM SAC), not under the recipient. Events appear here only when " +
+      "this contract's functions are invoked.";
+  }
+  return hint;
+}
+
+// sumBox nets every indexed movement per token. It is shown only once the
+// whole stream is loaded, and it is NOT a balance: value can move without a
+// transfer event. A negative net is impossible for real money — it means
+// inflows are missing from the index.
+function sumBox(id) {
+  const out = h("div"), btn = h("button", { class: "plain" }, "Sum all movements");
+  btn.onclick = async () => {
+    const gen = GEN, signal = ctl.signal, by = new Map(), MAXPAGES = 50;
+    let cursor = null, d = null, pages = 0, n = 0, below = 0;
+    btn.disabled = true;
+    out.replaceChildren(h("p", { class: "note" }, "loading every page…"));
+    try {
+      do {
+        d = await getJSON(dataURL(id, VIEWS.movements, cursor ? "cursor=" + encodeURIComponent(cursor) : "limit=1000"), signal);
+        if (gen !== GEN) return;
+        for (const m of d.movements || []) {
+          const e = by.get(m.tokenContractId) || { n: 0, inn: 0n, out: 0n, asset: m.asset, dec: m.decimals, proven: true };
+          const amt = BigInt(m.amount);
+          if (m.role === "recipient") e.inn += amt; else e.out += amt;
+          e.n++; n++;
+          if (!m.asset || m.asset !== e.asset || m.decimals !== e.dec || !okDec(m.decimals)) e.proven = false;
+          if (isBelow(m.ledger, d.coverage)) below++;
+          by.set(m.tokenContractId, e);
+        }
+        cursor = d.cursor; pages++;
+      } while (d.scanStatus === "HAS_MORE" && cursor && pages < MAXPAGES);
+    } catch (e) {
+      if (!aborted(e) && gen === GEN) out.replaceChildren(errNode(e));
+      btn.disabled = false;
+      return;
+    }
+    btn.disabled = false;
+    if (d.scanStatus === "HAS_MORE") {
+      out.replaceChildren(h("div", { class: "err" }, "Stopped after " + n + " movements (" + pages + " pages): sums are shown only once every page is loaded."));
+      return;
+    }
+    const cell = (v, e) => e.proven ? fmtUnits(v.toString(), e.dec) + " " + assetCode(e.asset) : v.toString() + " raw";
+    out.replaceChildren(h("div", { class: "cov" },
+      h("b", {}, "Net of indexed movements, not a balance"), " — " + n + (n === 1 ? " movement" : " movements") + ", every page loaded. " + (d.note || ""), " ",
+      ext("contract", id, "Compare with Stellar Expert's contract balances ↗"),
+      below ? h("div", {}, h("span", { class: "badge warn" }, below + " of " + n + " below the vouched range"), " — they are real, but inflows or outflows in unread ranges would be missing from these sums.") : null,
+      h("div", { class: "tblwrap" }, h("table", {}, h("thead", {}, h("tr", {}, ["token", "movements", "in", "out", "net"].map((x) => h("th", {}, x)))),
+        h("tbody", {}, [...by].map(([tok, e]) => {
+          const net = e.inn - e.out;
+          return h("tr", {}, h("td", {}, tokenCell(tok, e.proven ? e.asset : null)), h("td", {}, String(e.n)),
+            h("td", { class: "amt in" }, cell(e.inn, e)), h("td", { class: "amt out" }, cell(e.out, e)),
+            h("td", {}, h("span", { class: "amt " + (net < 0n ? "out" : "in") }, e.proven ? signed(net, e.dec) + " " + assetCode(e.asset) : signed(net, 0) + " raw"),
+              net < 0n ? [" ", h("span", { class: "badge warn" }, "negative: some inflow is not indexed")] : null));
+        }))))));
+  };
+  return h("div", {}, btn, out);
+}
+
+/* ---- admin mutations: bearer from the token field ---- */
+// askToken asks for the bearer beside the contract, without echoing it: the
+// token field lives on the list page, hidden here.
+function askToken(id, msg, why) {
+  const f = h("input", { type: "password", placeholder: "ADMIN_TOKEN", autocomplete: "off" });
+  const go = h("button", { class: "plain", onclick: () => { $("token").value = f.value; unregister(id, msg); } }, "Unregister");
+  msg.replaceChildren(why ? errNode(why) : "", h("span", { class: "note" }, "admin token: "), f, " ", go);
+  f.focus();
+}
+async function unregister(id, msg) {
+  const token = $("token").value;
+  if (!token) return askToken(id, msg);
+  if (!confirm("Unregister " + id + "? Indexed data is kept; re-registering resumes.")) return;
+  try {
+    const r = await fetch(api("/v1/contracts/" + id), { method: "DELETE", headers: { Authorization: "Bearer " + token } });
+    if (!r.ok && r.status !== 204) {
+      const b = await r.json().catch(() => ({})), why = b.error || r.status + " " + r.statusText;
+      // A rejected token would be resent on every retry; drop it and ask again.
+      if (r.status === 401 || r.status === 403) { $("token").value = ""; return askToken(id, msg, why); }
+      throw new Error(why);
+    }
+    DETAIL = null;
+    await loadList();
+    location.hash = "#/" + (String(LISTQ) ? "?" + LISTQ : "");
+  } catch (e) { msg.replaceChildren(errNode(e)); }
+}
 $("regbtn").onclick = async () => {
   const payload = { contract_id: $("regid").value.trim() };
   const from = $("regfrom").value.trim();
@@ -373,212 +1173,73 @@ $("regbtn").onclick = async () => {
       note += "<div class='err'>Heads up: trustlines only applies to SAC contracts (classic assets). A " +
         esc(b.classification?.type) + " contract will never produce trustline rows.</div>";
     }
+    for (const w of b.warnings || []) note += "<div class='err'>" + esc(w) + "</div>";
     $("regmsg").innerHTML = note;
     $("regid").value = "";
-    refreshContracts();
-    selectContract(b.contract_id);
-  } catch (e) { errBox($("regmsg"), e); }
+    DETAIL = null; // an upsert can change the kinds: the cached header must not survive it
+    await loadList();
+    renderList(LISTQ);
+    if (strkeyBytes("C", b.contract_id)) location.hash = "#/c/" + b.contract_id;
+  } catch (e) { $("regmsg").replaceChildren(errNode(e)); }
 };
 
-/* ---- data explorer tabs ---- */
-const TABS = {
-  events: {
-    label: "Events",
-    path: (id) => "/v1/contracts/" + id + "/events",
-    filters: [["topic0", "topic0 (base64 ScVal)"], ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
-    head: ["id", "ledger", "closed at", "name", "topics", "value", "tx"],
-    rows: (d) => d.events.map((e) => [
-      mono(short(e.id, 8), e.id), e.ledger, when(e.ledgerClosedAt), esc(e.eventName || ""),
-      e.topic.length, mono(short(e.value, 10), e.value), mono(short(e.txHash, 6), e.txHash),
-    ]),
-  },
-  transfers: {
-    label: "Transfers",
-    path: (id) => "/v1/contracts/" + id + "/transfers",
-    filters: [["account", "account (either side)"], ["from", "from"], ["to", "to"],
-      ["type", "type", ["", "transfer", "mint", "burn", "clawback"]],
-      ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
-    head: ["ledger", "closed at", "type", "from", "to", "amount", "asset"],
-    rows: (d) => d.transfers.map((t) => [
-      t.ledger, when(t.ledgerClosedAt), esc(t.transferType),
-      mono(short(t.from || "", 6), t.from), mono(short(t.to || "", 6), t.to),
-      mono(esc(t.amount)), esc(t.asset || ""),
-    ]),
-  },
-  movements: {
-    label: "Movements",
-    path: (id) => "/v1/contracts/" + id + "/movements",
-    filters: [["role", "role", ["", "recipient", "sender"]],
-      ["token", "token contract (C…)"],
-      ["type", "type", ["", "transfer", "mint", "burn", "clawback"]],
-      ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
-    head: ["ledger", "closed at", "direction", "counterparty", "amount", "token"],
-    rows: (d) => d.movements.map((m) => [
-      m.ledger, when(m.ledgerClosedAt),
-      (m.role === "recipient" ? "<b>IN</b>" : "<b>OUT</b>") + " " + esc(m.transferType),
-      mono(short(m.counterparty || "", 6), m.counterparty),
-      mono(esc(m.amount)), mono(short(m.tokenContractId, 6), m.tokenContractId),
-    ]),
-  },
-  state: {
-    label: "State",
-    path: (id) => "/v1/contracts/" + id + "/state",
-    filters: [["key", "key (base64 ScVal)"]],
-    head: ["key", "durability", "value", "last ledger", "closed at"],
-    rows: (d) => d.entries.map((e) => [
-      mono(short(e.key, 12), e.key), esc(e.durability), mono(short(e.value, 14), e.value),
-      e.lastModifiedLedger, when(e.closedAt),
-    ]),
-    cursorField: "cursor",
-  },
-  statehist: {
-    label: "State history",
-    path: (id) => "/v1/contracts/" + id + "/state/history",
-    filters: [["key", "key (base64 ScVal)"], ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
-    head: ["ledger", "closed at", "change", "key", "pre", "post"],
-    rows: (d) => d.changes.map((c) => [
-      c.ledger, when(c.ledgerClosedAt), esc(c.changeType), mono(short(c.key, 10), c.key),
-      mono(short(c.pre || "", 10), c.pre), mono(short(c.post || "", 10), c.post),
-    ]),
-  },
-  trustlines: {
-    label: "Trustlines",
-    path: (id) => "/v1/contracts/" + id + "/trustlines",
-    filters: [["account", "account (G…)"]],
-    head: ["account", "asset", "balance", "limit", "flags", "last ledger"],
-    rows: (d) => d.trustlines.map((t) => [
-      mono(short(t.accountId, 8), t.accountId), esc(short(t.asset, 12)),
-      mono(esc(t.balance)), mono(esc(t.limit)), t.flags, t.lastModifiedLedger,
-    ]),
-  },
-  tlhist: {
-    label: "TL history",
-    path: (id) => "/v1/contracts/" + id + "/trustlines/history",
-    filters: [["account", "account (G…)"], ["startLedger", "startLedger"], ["endLedger", "endLedger"]],
-    head: ["ledger", "closed at", "change", "account", "pre balance", "post balance"],
-    rows: (d) => d.changes.map((c) => [
-      c.ledger, when(c.ledgerClosedAt), esc(c.changeType), mono(short(c.accountId, 8), c.accountId),
-      mono(esc(c.preBalance || "")), mono(esc(c.postBalance || "")),
-    ]),
-  },
-};
-const mono = (txt, title) => "<span class='mono' title='" + esc(title || "") + "'>" + txt + "</span>";
-let currentTab = "events";
-let coverageByKind = {};
-let nextCursor = null;
-
-function renderTabs() {
-  $("tabs").innerHTML = Object.entries(TABS).map(([k, t]) =>
-    "<button data-tab='" + k + "'" + (k === currentTab ? " class='active'" : "") + ">" + t.label + "</button>"
-  ).join("");
-  for (const b of $("tabs").querySelectorAll("button")) b.onclick = () => openTab(b.dataset.tab);
-}
-
-function openTab(key) {
-  currentTab = key;
-  nextCursor = null;
-  syncHash();
-  renderTabs();
-  const t = TABS[key];
-  const inputs = t.filters.map(([name, label, opts]) =>
-    opts
-      ? "<select id='f_" + name + "'>" + opts.map((o) => "<option value='" + o + "'>" + (o || "any type") + "</option>").join("") + "</select>"
-      : "<input id='f_" + name + "' placeholder='" + esc(label) + "' size='" + Math.max(12, label.length) + "'>"
-  ).join(" ");
-  $("tabbody").innerHTML =
-    "<form class='inline' id='filterform'>" + inputs +
-    " <button type='submit'>Query</button></form>" +
-    "<div id='scanline' class='statusline'></div>" +
-    "<div class='tblwrap'><table id='data'><thead><tr>" +
-    t.head.map((h) => "<th>" + h + "</th>").join("") +
-    "</tr></thead><tbody></tbody></table></div>" +
-    "<button class='plain' id='more' hidden>Load more</button><div id='taberr'></div>";
-  $("filterform").onsubmit = (ev) => { ev.preventDefault(); loadTab(false); };
-  $("more").onclick = () => loadTab(true);
-  loadTab(false);
-}
-
-// emptyHint explains the most common surprise behind an empty page: asset
-// movements (plain payments) are recorded under the ASSET's own contract,
-// not under whoever received the money. Learned from the first user's
-// first test session.
-function emptyHint() {
-  let hint = "no rows";
-  if (currentTab === "events" || currentTab === "transfers") {
-    hint += " — tip: sending an asset TO a contract records a transfer under the " +
-      "asset's own SAC contract (e.g. XLM movements live under the XLM SAC), not under " +
-      "the recipient. Events appear here only when this contract's functions are invoked.";
+/* ---- routing: only "/" is served, so views live in the hash ---- */
+//   #/?q=…&code=…&type=…      the list
+//   #/c/C…[/tab][?filters]    a contract (history?key=<base64> for one key)
+// Each navigation aborts the previous one's fetches and bumps GEN, so a
+// late answer for contract A can never paint over contract B.
+let GEN = 0, ctl = new AbortController();
+function route() {
+  GEN++; ctl.abort(); ctl = new AbortController();
+  clearTimeout(qTimer);
+  const [p, qs] = location.hash.replace(/^#/, "").split("?");
+  const parts = p.split("/").filter(Boolean), q = new URLSearchParams(qs || "");
+  if (parts[0] === "c" && strkeyBytes("C", parts[1] || "")) {
+    if (!$("view-list").hidden) LIST_Y = window.scrollY;
+    return showDetail(parts[1], parts[2] || "", q, GEN, ctl.signal);
   }
-  return "<tr><td colspan='9' class='note'>" + hint + "</td></tr>";
+  const wasDetail = !$("view-detail").hidden;
+  CURRENT = null;
+  $("view-detail").hidden = true; $("view-list").hidden = false;
+  renderList(parts.length ? LISTQ : q);
+  $("listmsg").replaceChildren(parts.length ? h("div", { class: "err" }, "No such page: " + location.hash.slice(0, 80)) : "");
+  if (wasDetail) window.scrollTo(0, LIST_Y);
 }
-
-async function loadTab(more) {
-  const t = TABS[currentTab];
-  $("taberr").innerHTML = "";
-  let qs;
-  if (more && nextCursor) {
-    qs = "?cursor=" + encodeURIComponent(nextCursor);
-  } else {
-    const parts = ["limit=25"];
-    for (const [name] of t.filters) {
-      const v = $("f_" + name)?.value.trim();
-      if (v) parts.push(name + "=" + encodeURIComponent(v));
-    }
-    qs = "?" + parts.join("&");
-  }
-  try {
-    const d = await getJSON(t.path(selected) + qs);
-    const rows = t.rows(d);
-    const html = rows.map((r) => "<tr>" + r.map((c) => "<td>" + c + "</td>").join("") + "</tr>").join("");
-    const body = $("data").querySelector("tbody");
-    if (more) body.insertAdjacentHTML("beforeend", html);
-    else body.innerHTML = html || emptyHint();
-    nextCursor = d.cursor || null;
-    const hasMore = d.scanStatus === "HAS_MORE" || (currentTab === "state" && d.cursor);
-    $("more").hidden = !hasMore || !nextCursor;
-    const cov = d.coverage;
-    let line = d.scanStatus ? "scanStatus " + d.scanStatus : "";
-    if (cov && cov.kindDerived === false) {
-      line = "this contract does not derive the " + cov.kind +
-        " kind — nothing was ever indexed here, which is not the same as nothing having happened";
-    } else if (cov) {
-      line += (line ? " · " : "") + "indexed " + cov.indexedFromLedger + "–" + cov.indexedToLedger +
-        (cov.backfillPending ? " (backfill running)" : "");
-    }
-    $("scanline").textContent = line;
-    // Some resources carry a caveat about what they are not (movements are
-    // not a balance); show it rather than letting a running total read as one.
-    if (d.note) $("scanline").textContent += " — " + d.note;
-  } catch (e) { errBox($("taberr"), e); }
-}
-
-/* ---- URL state ---- */
-// The selection lives in the fragment (#/<contract>/<tab>) so a reload or a
-// shared link lands on the same contract and tab. The fragment, not the path:
-// the server mounts this page at exactly "/" and knows no other route.
-function syncHash() {
-  const want = selected ? "/" + selected + "/" + currentTab : "";
-  if (location.hash.slice(1) === want) return;
-  if (want) location.hash = want;
-  else history.replaceState(null, "", location.pathname);
-}
-
-function applyHash() {
-  const m = location.hash.match(/^#\/([A-Z0-9]{56})(?:\/(\w+))?$/);
-  if (!m) return;
-  const tab = TABS[m[2]] ? m[2] : "events";
-  if (m[1] === selected && tab === currentTab) return;
-  currentTab = tab;
-  selectContract(m[1]);
-}
-window.onhashchange = applyHash;
+window.addEventListener("hashchange", route);
+// "/" jumps to the search box from anywhere.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || "")) return;
+  e.preventDefault();
+  if ($("view-list").hidden) { history.pushState(null, "", "#/" + (String(LISTQ) ? "?" + LISTQ : "")); route(); }
+  $("q").focus(); $("q").select();
+});
 
 /* ---- boot ---- */
-refreshStatus();
-refreshContracts();
-applyHash();
-setInterval(refreshStatus, 5000);
-setInterval(refreshContracts, 15000);
+(async () => {
+  await refreshStatus();
+  try { await loadList(); } catch (e) { $("loadedat").replaceChildren(errNode(e)); }
+  const [p, qs] = location.hash.replace(/^#/, "").split("?");
+  if (!p.startsWith("/c/")) LISTQ = new URLSearchParams(qs || "");
+  renderList(LISTQ);
+  route();
+})();
+const visible = () => document.visibilityState === "visible";
+setInterval(() => { if (visible()) refreshStatus(); }, 5000);
+document.addEventListener("visibilitychange", () => { if (visible()) refreshStatus(); });
+// The open contract's header (coverage, counts) stays live; its tables do
+// not move under the reader.
+setInterval(async () => {
+  if (!visible() || !DETAIL || CURRENT !== DETAIL.id) return;
+  const id = DETAIL.id;
+  try {
+    const d = await getJSON("/v1/contracts/" + id);
+    if (CURRENT === id && DETAIL && DETAIL.id === id && JSON.stringify(d) !== JSON.stringify(DETAIL.d)) {
+      const kindsMoved = String(d.kinds) !== String(DETAIL.d.kinds);
+      DETAIL.d = d; renderDetailHead(id, d);
+      if (kindsMoved) renderTabs(id, DETAIL.tab, d.kinds || []);
+    }
+  } catch { /* next tick */ }
+}, 15000);
 </script>
 </body>
 </html>

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -34,11 +35,15 @@ func (s *Server) RegisterState(mux *http.ServeMux, state stateReader) {
 // --- snapshot ---------------------------------------------------------------
 
 type stateEntryRecord struct {
-	Key                string `json:"key"`
-	Durability         string `json:"durability"`
-	Value              string `json:"value"`
-	LastModifiedLedger uint32 `json:"lastModifiedLedger"`
-	ClosedAt           string `json:"closedAt"`
+	Key string `json:"key"`
+	// KeyJSON is the contract-data key as a ScVal, not an RPC LedgerKey.
+	// Both JSON views are set only under xdrFormat=json.
+	KeyJSON            json.RawMessage `json:"keyJson,omitempty"`
+	Durability         string          `json:"durability"`
+	Value              string          `json:"value"`
+	ValueJSON          json.RawMessage `json:"valueJson,omitempty"`
+	LastModifiedLedger uint32          `json:"lastModifiedLedger"`
+	ClosedAt           string          `json:"closedAt"`
 }
 
 type stateSnapshotResponse struct {
@@ -55,8 +60,13 @@ func (s *Server) handleStateSnapshot(w http.ResponseWriter, r *http.Request, sta
 	}
 	contractID := contract.ContractID
 
-	q := store.StateQuery{ContractID: contractID, Limit: defaultLimit}
 	params := r.URL.Query()
+	asJSON, err := xdrFormatParam(params)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	q := store.StateQuery{ContractID: contractID, Limit: defaultLimit}
 	if cursor := params.Get("cursor"); cursor != "" {
 		for _, banned := range []string{"key", "limit"} {
 			if params.Has(banned) {
@@ -72,7 +82,6 @@ func (s *Server) handleStateSnapshot(w http.ResponseWriter, r *http.Request, sta
 		}
 		q = decoded
 	} else {
-		var err error
 		if q.KeyXDR, err = keyParam(params.Get("key")); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
@@ -97,13 +106,20 @@ func (s *Server) handleStateSnapshot(w http.ResponseWriter, r *http.Request, sta
 		LatestLedger: cursorSeq,
 	}
 	for _, e := range entries {
-		resp.Entries = append(resp.Entries, stateEntryRecord{
+		rec := stateEntryRecord{
 			Key:                e.KeyXDR,
 			Durability:         e.Durability,
 			Value:              e.ValueXDR,
 			LastModifiedLedger: e.LastLedger,
 			ClosedAt:           e.ClosedAt.UTC().Format(time.RFC3339),
-		})
+		}
+		if asJSON {
+			rec.KeyJSON = s.scvalJSON(e.KeyXDR)
+			if e.ValueXDR != "" {
+				rec.ValueJSON = s.scvalJSON(e.ValueXDR)
+			}
+		}
+		resp.Entries = append(resp.Entries, rec)
 	}
 	if hasMore && len(entries) > 0 {
 		last := entries[len(entries)-1]
@@ -121,13 +137,18 @@ type stateChangeRecord struct {
 	LedgerClosedAt string `json:"ledgerClosedAt"`
 	ContractID     string `json:"contractId"`
 	Key            string `json:"key"`
-	Durability     string `json:"durability"`
-	ChangeType     string `json:"changeType"`
-	Pre            string `json:"pre,omitempty"`
-	Post           string `json:"post,omitempty"`
-	TxHash         string `json:"txHash"`
-	TxIndex        int32  `json:"txIndex"`
-	OpIndex        int32  `json:"opIndex"`
+	// The JSON views are set only under xdrFormat=json, and only beside a
+	// value that exists: no preJson on a creation, no postJson on a removal.
+	KeyJSON    json.RawMessage `json:"keyJson,omitempty"`
+	Durability string          `json:"durability"`
+	ChangeType string          `json:"changeType"`
+	Pre        string          `json:"pre,omitempty"`
+	PreJSON    json.RawMessage `json:"preJson,omitempty"`
+	Post       string          `json:"post,omitempty"`
+	PostJSON   json.RawMessage `json:"postJson,omitempty"`
+	TxHash     string          `json:"txHash"`
+	TxIndex    int32           `json:"txIndex"`
+	OpIndex    int32           `json:"opIndex"`
 }
 
 type stateHistoryResponse struct {
@@ -145,8 +166,13 @@ func (s *Server) handleStateHistory(w http.ResponseWriter, r *http.Request, stat
 	}
 	contractID := contract.ContractID
 
-	q := store.StateQuery{ContractID: contractID, FromLedger: 1, Limit: defaultLimit}
 	params := r.URL.Query()
+	asJSON, err := xdrFormatParam(params)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	q := store.StateQuery{ContractID: contractID, FromLedger: 1, Limit: defaultLimit}
 	if cursor := params.Get("cursor"); cursor != "" {
 		for _, banned := range []string{"key", "limit", "startLedger", "endLedger"} {
 			if params.Has(banned) {
@@ -162,7 +188,6 @@ func (s *Server) handleStateHistory(w http.ResponseWriter, r *http.Request, stat
 		}
 		q = decoded
 	} else {
-		var err error
 		if q.KeyXDR, err = keyParam(params.Get("key")); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
@@ -212,7 +237,7 @@ func (s *Server) handleStateHistory(w http.ResponseWriter, r *http.Request, stat
 		LatestLedger: cursorSeq,
 	}
 	for _, c := range changes {
-		resp.Changes = append(resp.Changes, stateChangeRecord{
+		rec := stateChangeRecord{
 			ID:             c.ID,
 			Ledger:         c.LedgerSequence,
 			LedgerClosedAt: c.ClosedAt.UTC().Format(time.RFC3339),
@@ -225,7 +250,17 @@ func (s *Server) handleStateHistory(w http.ResponseWriter, r *http.Request, stat
 			TxHash:         c.TxHash,
 			TxIndex:        c.TxIndex,
 			OpIndex:        c.OpIndex,
-		})
+		}
+		if asJSON {
+			rec.KeyJSON = s.scvalJSON(c.KeyXDR)
+			if c.PreXDR != "" {
+				rec.PreJSON = s.scvalJSON(c.PreXDR)
+			}
+			if c.PostXDR != "" {
+				rec.PostJSON = s.scvalJSON(c.PostXDR)
+			}
+		}
+		resp.Changes = append(resp.Changes, rec)
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

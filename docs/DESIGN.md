@@ -178,8 +178,9 @@ type Committer interface {
 
 - `contracts` — id, source (config|api), kinds, registered_at; config-seeded
   rows win over API rows [Umbra].
-- `events` — raw XDR + decoded payload (JSONB), envelope meta columns,
-  unique idempotency key.
+- `events` — raw XDR (topics as base64 in JSONB, value and whole event),
+  envelope meta columns, unique idempotency key. The decoded payload is
+  not stored: it is rendered at read time (§8, `xdrFormat=json`).
 - `state_entries` — current snapshot: (contract_id, key_xdr) → value, last
   modified ledger. Cheap upsert per change [D8].
 - `state_changes` — history: every entry change with provenance.
@@ -275,6 +276,17 @@ self-hosted full-history implementation, and a byte-compatible RPC facade
     which [P7, #1872].
 - `GET /v1/contracts/:id/state` — current snapshot (`?key=` filter).
 - `GET /v1/contracts/:id/state/history` — entry changes, same pagination.
+- `xdrFormat=json` (RPC's parameter) on events, state, state/history and
+  movements adds RPC-shaped JSON beside every base64 ScVal (`topicJson`,
+  `valueJson`, `keyJson`, `preJson`, `postJson`); the parameter never
+  changes the default response (movements carry the proven
+  `asset`/`decimals` pair in both formats). It is a presentation parameter: accepted beside a
+  cursor, never encoded in one, because it changes how a page is written
+  and not which rows it holds. This is where D3's decoded payload lives:
+  rendered at read time from the stored XDR by a pure-Go encoder
+  (`internal/scvaljson`, no CGO), so it costs no migration or rederive and
+  a rendering change never touches stored rows. Only the ScVal shape is
+  promised; envelopes are never rendered.
 - `GET /v1/contracts/:id` — registration, classification, coverage, counts.
 - `GET /v1/status` — instance-wide: network, cursor, tip lag, per-contract
   coverage, open gaps, suppressed-removal counters.

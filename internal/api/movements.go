@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -17,10 +18,12 @@ type movementReader interface {
 	QueryMovements(ctx context.Context, network string, q store.MovementQuery) ([]store.Movement, bool, error)
 }
 
-// RegisterMovements mounts the movements route onto mux.
-func (s *Server) RegisterMovements(mux *http.ServeMux, movements movementReader) {
+// RegisterMovements mounts the movements route onto mux. passphrase is the
+// instance's network passphrase: a token is only labelled with its asset
+// when that asset's contract id, derived under it, is the emitter.
+func (s *Server) RegisterMovements(mux *http.ServeMux, movements movementReader, passphrase string) {
 	mux.HandleFunc("GET /v1/contracts/{id}/movements", func(w http.ResponseWriter, r *http.Request) {
-		s.handleMovements(w, r, movements)
+		s.handleMovements(w, r, movements, passphrase)
 	})
 }
 
@@ -34,6 +37,12 @@ type movementRecord struct {
 	TransferType    string `json:"transferType"`
 	Counterparty    string `json:"counterparty,omitempty"`
 	Amount          string `json:"amount"`
+	// Asset and Decimals are set, in either xdrFormat, only when the token
+	// is proven to be the Stellar Asset Contract of that asset (see
+	// sacAssets). A custom token can name any asset in its events, so an
+	// unproven one gets neither field rather than a guess.
+	Asset    string `json:"asset,omitempty"`
+	Decimals uint32 `json:"decimals,omitempty"`
 	// RawXDR is the base64 ContractEvent the movement was decoded from —
 	// the original bytes, since the emitting token is usually not
 	// registered and no events row exists to join to. Empty only for rows
@@ -42,9 +51,13 @@ type movementRecord struct {
 	// TxHash is the hex hash of the transaction the movement's event was
 	// emitted in. Absent on rows derived before migration 0013 that the
 	// tx-hash reconciliation (admin op) has not reached yet.
-	TxHash         string `json:"txHash,omitempty"`
-	Ledger         uint32 `json:"ledger"`
-	LedgerClosedAt string `json:"ledgerClosedAt"`
+	TxHash string `json:"txHash,omitempty"`
+	// TopicJSON and ValueJSON render the topics and data inside RawXDR
+	// under xdrFormat=json; absent when RawXDR is.
+	TopicJSON      json.RawMessage `json:"topicJson,omitempty"`
+	ValueJSON      json.RawMessage `json:"valueJson,omitempty"`
+	Ledger         uint32          `json:"ledger"`
+	LedgerClosedAt string          `json:"ledgerClosedAt"`
 }
 
 type movementsResponse struct {
@@ -64,15 +77,20 @@ const movementsNote = "Movements are token transfers this contract took part in,
 	"the emitting token's events. Value can also arrive without any SEP-41 transfer event " +
 	"(custom tokens, contracts crediting internal balances), so this is not a balance."
 
-func (s *Server) handleMovements(w http.ResponseWriter, r *http.Request, movements movementReader) {
+func (s *Server) handleMovements(w http.ResponseWriter, r *http.Request, movements movementReader, passphrase string) {
 	contract, ok := s.knownContract(w, r)
 	if !ok {
 		return
 	}
 	contractID := contract.ContractID
 
-	q := store.MovementQuery{ContractID: contractID, FromLedger: 1, Limit: defaultLimit}
 	params := r.URL.Query()
+	asJSON, err := xdrFormatParam(params)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	q := store.MovementQuery{ContractID: contractID, FromLedger: 1, Limit: defaultLimit}
 	if cursor := params.Get("cursor"); cursor != "" {
 		for _, banned := range []string{"role", "token", "type", "startLedger", "endLedger", "limit"} {
 			if params.Has(banned) {
@@ -88,7 +106,6 @@ func (s *Server) handleMovements(w http.ResponseWriter, r *http.Request, movemen
 		}
 		q = decoded
 	} else {
-		var err error
 		if q.Limit, err = limitParam(params.Get("limit")); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
@@ -162,8 +179,9 @@ func (s *Server) handleMovements(w http.ResponseWriter, r *http.Request, movemen
 		LatestLedger: cursorSeq,
 		Note:         movementsNote,
 	}
+	sac := newSACAssets(passphrase)
 	for _, m := range rows {
-		resp.Movements = append(resp.Movements, movementRecord{
+		rec := movementRecord{
 			ID:              m.TransferID,
 			Role:            m.Role,
 			TokenContractID: m.TokenContractID,
@@ -174,7 +192,19 @@ func (s *Server) handleMovements(w http.ResponseWriter, r *http.Request, movemen
 			TxHash:          m.TxHash,
 			Ledger:          m.LedgerSequence,
 			LedgerClosedAt:  m.ClosedAt.UTC().Format(time.RFC3339),
-		})
+		}
+		if m.RawXDR != "" {
+			ev, decoded := decodeMovementEvent(m.RawXDR)
+			if decoded {
+				if asset := sac.assetOf(ev, m.TokenContractID); asset != "" {
+					rec.Asset, rec.Decimals = asset, sacDecimals
+				}
+			}
+			if asJSON {
+				rec.TopicJSON, rec.ValueJSON = s.movementJSON(ev, decoded)
+			}
+		}
+		resp.Movements = append(resp.Movements, rec)
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

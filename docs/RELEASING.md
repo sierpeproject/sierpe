@@ -10,6 +10,8 @@ Docs are part of the definition of done (DESIGN.md §12); so is this runbook.
 - Live tests passing: `SIERPE_LIVE_TEST=1 go test ./internal/source/rpc -run TestLive -v`.
 - CHANGELOG.md updated: move `[Unreleased]` under the new version with the
   date.
+- `docs/openapi.yaml` `info.version` set to the new version (it read
+  `0.1.0-m1` from v1.0.0 to v1.10.2 because no step said so).
 - The project name is **sierpe** (final as of v1.0.0). The tag freezes the
   module path, the image name and the API surface in the ecosystem's memory.
 
