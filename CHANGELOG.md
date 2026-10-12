@@ -86,6 +86,9 @@ All notable changes to Sierpe are documented here. The format follows
 
 ### Fixed
 
+- The Docker builder images move to `golang:1.26-alpine`: `go.mod`
+  requires Go 1.26 since the toolchain bump, and the 1.25 builder could
+  no longer run `go mod download`.
 - The UI rendered a selected contract's detail below the whole contract
   list: about 37,600 px down at 1,285 contracts. The contract page is now
   its own view.
