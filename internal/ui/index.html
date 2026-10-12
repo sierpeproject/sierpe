@@ -56,6 +56,17 @@ th { background: var(--box); }
 tr.sel { background: var(--orange-pale); }
 #contracts tbody tr { cursor: pointer; }
 
+/* The contracts table is capped so the detail below stays reachable with
+   hundreds of registered contracts; the header pins while the body scrolls.
+   Sticky headers need border-collapse: separate (collapsed borders detach
+   from the sticky cell), so this table draws its own grid. */
+#cwrap { max-height: 400px; overflow-y: auto; border: 1px solid var(--line); }
+#contracts { border-collapse: separate; border-spacing: 0; margin: 0; }
+#contracts th, #contracts td { border: 0; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); }
+#contracts th:last-child, #contracts td:last-child { border-right: 0; }
+#contracts tbody tr:last-child td { border-bottom: 0; }
+#contracts thead th { position: sticky; top: 0; background: var(--box); cursor: pointer; user-select: none; }
+
 .err {
   margin: 10px 0; padding: 8px 14px; background: var(--orange-pale);
   border-left: 3px solid var(--orange); font-size: 14px; white-space: pre-wrap;
@@ -110,9 +121,18 @@ form.inline label { font-size: 13px; color: var(--muted); }
   <div class="cols">
     <div>
       <h1>Registered contracts</h1>
-      <div class="tblwrap">
+      <form class="inline" id="csearchform">
+        <input id="csearch" placeholder="filter by address, type, or kind" size="30" autocomplete="off">
+        <span class="note" id="ccount"></span>
+      </form>
+      <div class="tblwrap" id="cwrap">
         <table id="contracts">
-          <thead><tr><th>Contract</th><th>Type</th><th>Kinds</th><th>Registered</th></tr></thead>
+          <thead><tr>
+            <th data-sort="contract">Contract</th>
+            <th data-sort="type">Type</th>
+            <th data-sort="kinds">Kinds</th>
+            <th data-sort="registered">Registered</th>
+          </tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -203,28 +223,84 @@ async function refreshStatus() {
 
 /* ---- contracts ---- */
 let selected = null;
+let allContracts = [];
 
 async function refreshContracts() {
   const body = $("contracts").querySelector("tbody");
   try {
     const d = await getJSON("/v1/contracts");
-    $("nocontracts").hidden = d.contracts.length > 0;
-    body.innerHTML = d.contracts.map((c) =>
-      "<tr data-id='" + esc(c.contract_id) + "'" + (c.contract_id === selected ? " class='sel'" : "") + ">" +
-      "<td class='mono' title='" + esc(c.contract_id) + "'>" + short(c.contract_id, 8) + "</td>" +
-      "<td>" + esc(c.classification?.type || "?") + "</td>" +
-      "<td>" + c.kinds.map(esc).join(", ") + "</td>" +
-      "<td>" + when(c.registered_at) + "</td></tr>"
-    ).join("");
-    for (const tr of body.querySelectorAll("tr")) {
-      tr.onclick = () => selectContract(tr.dataset.id);
-    }
+    allContracts = d.contracts;
+    renderContracts();
   } catch (e) { errBox(body, e); }
 }
 
+// The filter is client-side over the already-fetched list: /v1/contracts
+// returns the whole registry anyway, so matching here costs no request.
+function contractsMatching(q) {
+  if (!q) return allContracts;
+  return allContracts.filter((c) =>
+    c.contract_id.toLowerCase().includes(q) ||
+    (c.classification?.type || "").toLowerCase().includes(q) ||
+    c.kinds.some((k) => k.toLowerCase().includes(q)));
+}
+
+// Sorting is offered only here, where the whole registry is in hand. The
+// data tabs stay unsorted on purpose: they page through a cursor, and
+// sorting one page would read as sorting the whole history.
+const SORTKEYS = {
+  contract: (c) => c.contract_id,
+  type: (c) => c.classification?.type || "",
+  kinds: (c) => c.kinds.join(","),
+  registered: (c) => c.registered_at || "",
+};
+let sortKey = null;
+let sortDir = 1;
+
+function sortClick(key) {
+  if (sortKey === key) sortDir = -sortDir;
+  else { sortKey = key; sortDir = 1; }
+  renderContracts();
+}
+
+for (const th of document.querySelectorAll("#contracts thead th")) {
+  th.dataset.label = th.textContent;
+  th.onclick = () => sortClick(th.dataset.sort);
+}
+
+function renderContracts() {
+  const body = $("contracts").querySelector("tbody");
+  const q = $("csearch").value.trim().toLowerCase();
+  let list = contractsMatching(q);
+  if (sortKey) {
+    const get = SORTKEYS[sortKey];
+    list = [...list].sort((a, b) => sortDir * get(a).localeCompare(get(b)));
+  }
+  for (const th of document.querySelectorAll("#contracts thead th")) {
+    th.textContent = th.dataset.label +
+      (th.dataset.sort === sortKey ? (sortDir > 0 ? " ▲" : " ▼") : "");
+  }
+  $("nocontracts").hidden = allContracts.length > 0;
+  $("csearchform").hidden = allContracts.length === 0;
+  $("ccount").textContent = q
+    ? list.length + " of " + allContracts.length + " shown"
+    : allContracts.length + " registered";
+  body.innerHTML = list.map((c) =>
+    "<tr data-id='" + esc(c.contract_id) + "'" + (c.contract_id === selected ? " class='sel'" : "") + ">" +
+    "<td class='mono' title='" + esc(c.contract_id) + "'>" + short(c.contract_id, 8) + "</td>" +
+    "<td>" + esc(c.classification?.type || "?") + "</td>" +
+    "<td>" + c.kinds.map(esc).join(", ") + "</td>" +
+    "<td>" + when(c.registered_at) + "</td></tr>"
+  ).join("") || (q ? "<tr><td colspan='4' class='note'>nothing matches that filter</td></tr>" : "");
+  for (const tr of body.querySelectorAll("tr[data-id]")) {
+    tr.onclick = () => selectContract(tr.dataset.id);
+  }
+}
+
+$("csearch").oninput = renderContracts;
+
 async function selectContract(id) {
   selected = id;
-  refreshContracts();
+  if (allContracts.length) renderContracts();
   $("detail").hidden = false;
   $("dtitle").textContent = id;
   $("dinfo").innerHTML = "<p class='note'>loading…</p>";
@@ -270,6 +346,7 @@ async function unregister() {
     }
     $("detail").hidden = true;
     selected = null;
+    syncHash();
     refreshContracts();
   } catch (e) { errBox($("unregmsg"), e); }
 }
@@ -400,6 +477,7 @@ function renderTabs() {
 function openTab(key) {
   currentTab = key;
   nextCursor = null;
+  syncHash();
   renderTabs();
   const t = TABS[key];
   const inputs = t.filters.map(([name, label, opts]) =>
@@ -474,9 +552,31 @@ async function loadTab(more) {
   } catch (e) { errBox($("taberr"), e); }
 }
 
+/* ---- URL state ---- */
+// The selection lives in the fragment (#/<contract>/<tab>) so a reload or a
+// shared link lands on the same contract and tab. The fragment, not the path:
+// the server mounts this page at exactly "/" and knows no other route.
+function syncHash() {
+  const want = selected ? "/" + selected + "/" + currentTab : "";
+  if (location.hash.slice(1) === want) return;
+  if (want) location.hash = want;
+  else history.replaceState(null, "", location.pathname);
+}
+
+function applyHash() {
+  const m = location.hash.match(/^#\/([A-Z0-9]{56})(?:\/(\w+))?$/);
+  if (!m) return;
+  const tab = TABS[m[2]] ? m[2] : "events";
+  if (m[1] === selected && tab === currentTab) return;
+  currentTab = tab;
+  selectContract(m[1]);
+}
+window.onhashchange = applyHash;
+
 /* ---- boot ---- */
 refreshStatus();
 refreshContracts();
+applyHash();
 setInterval(refreshStatus, 5000);
 setInterval(refreshContracts, 15000);
 </script>

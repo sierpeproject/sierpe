@@ -4,6 +4,30 @@ All notable changes to Sierpe are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- The embedded UI keeps the selected contract and data tab in the URL
+  fragment (`#/<contract>/<tab>`), so a reload lands where it was and a
+  view can be shared as a link. The fragment is the only route the page
+  claims: the server still serves exactly `/`.
+
+### Changed
+
+- The embedded UI's contracts table sorts by any column (click the
+  header; click again to flip). Only the contracts table: the data tabs
+  page through a cursor, and sorting one fetched page would read as
+  sorting the whole history.
+- The embedded UI's contracts table now scales to registries with
+  hundreds of contracts: a client-side filter box (matches address,
+  type, or kind) with a shown/registered counter sits above the table,
+  the table body scrolls inside a capped panel with the header row
+  pinned, and the contract detail stays reachable right below instead
+  of after the full list. Selecting a row no longer refetches the
+  registry. The pilot registry (1,285 contracts) made the flat list
+  unusable: the detail panel rendered after 1,285 rows.
+
 ## [1.12.0] - 2026-09-30
 
 ### Added
