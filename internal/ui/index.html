@@ -4,25 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sierpe</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%23c44a08'/%3E%3Cpath fill='%23fff' d='M4 17c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3v-2c-2.5 0-2.5 3-5 3s-2.5-3-5-3-2.5 3-5 3v2zm0-6c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3V6c-2.5 0-2.5 3-5 3S11.5 6 9 6 6.5 9 4 9v2z'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%23137663'/%3E%3Cpath fill='%23fff' d='M4 17c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3v-2c-2.5 0-2.5 3-5 3s-2.5-3-5-3-2.5 3-5 3v2zm0-6c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3V6c-2.5 0-2.5 3-5 3S11.5 6 9 6 6.5 9 4 9v2z'/%3E%3C/svg%3E">
 <style>
 /* Sierpe embedded UI — same aesthetic as sierpe-web: orange & white.
-   Tokens follow sierpe-web's main.css: bars use --orange-dark (4.85:1 for
-   white text, AA at 14px); plain --orange stays an accent only. */
+   Tokens follow sierpe-web's main.css estuary palette: bars and buttons
+   use --accent-dark (5.53:1 for white text); the retired orange family
+   stays on as --warn, reserved for caveats so they never blend with the
+   brand color. */
 :root {
-  --orange: #e8590c; --orange-dark: #c44a08; --orange-deep: #a33d06; --orange-pale: #fff3ec;
+  --accent: #1f8a78; --accent-dark: #137663; --accent-deep: #0c5648; --accent-pale: #e9f6f3;
+  --warn: #e8590c; --warn-deep: #a33d06; --warn-pale: #fff3ec;
   --ink: #1f1f1f; --muted: #5c5c5c; --line: #dcdcdc; --box: #f7f7f7;
   --sym: #1d5fa8; --num: #7a3d00; --str: #256029; --ok: #2b7a2b;
 }
 * { box-sizing: border-box; }
-[hidden] { display: none !important; } /* .cols sets display:grid, which would beat the hidden attribute */
+[hidden] { display: none !important; } /* some views are flex/grid containers, which would beat the hidden attribute */
 body { margin: 0; font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--ink); background: #fff; }
 .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
 code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
-a { color: var(--orange-dark); }
+a { color: var(--accent-dark); }
 .sel { user-select: all; }
 
-#topbar { background: var(--orange-dark); border-bottom: 3px solid var(--orange-deep); }
+#topbar { background: var(--accent-dark); }
 #topbar .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; min-height: 48px; gap: 4px 12px; }
 #logo { color: #fff; font-size: 21px; font-weight: 700; letter-spacing: .5px; text-decoration: none; display: flex; align-items: center; gap: 8px; }
 #instinfo { color: #fff; font-size: 13px; font-weight: 600; }
@@ -36,11 +39,20 @@ h1.mono { font-size: 17px; margin: 4px 0; word-break: break-all; }
 #crumbs .off { color: #9a9a9a; }
 .actions { font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin: 2px 0 8px; }
 
-.cols { display: grid; grid-template-columns: 1fr 300px; gap: 28px; }
-.cols > * { min-width: 0; }
-@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+/* Global tabs under the brand bar (RabbitMQ-management style): sections,
+   not pages — the server still serves exactly "/". The status strip below
+   them keeps the vital numbers in sight from every section. */
+#gtabs { background: var(--accent-dark); border-bottom: 3px solid var(--accent-deep); }
+#gtabs .wrap { display: flex; flex-wrap: wrap; gap: 2px; }
+#gtabs a { padding: 6px 16px; color: #d7eee8; font-weight: 600; font-size: 13.5px; text-decoration: none; }
+#gtabs a.on { background: #fff; color: var(--accent-deep); border-radius: 5px 5px 0 0; }
+#strip { border-bottom: 1px solid var(--line); background: var(--box); }
+#strip .wrap { display: flex; flex-wrap: wrap; padding: 0; }
+#strip .cell { padding: 5px 14px; border-right: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+#strip .cell b { display: block; font-size: 13.5px; color: var(--ink); font-weight: 600; white-space: nowrap; }
+.adminboxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 420px)); gap: 20px; align-items: start; }
 .sidebox { border: 1px solid var(--line); background: var(--box); margin-bottom: 20px; font-size: 14px; }
-.sidebox h3 { margin: 0; padding: 7px 12px; background: var(--orange-dark); color: #fff; font-size: 14px; }
+.sidebox h3 { margin: 0; padding: 7px 12px; background: var(--accent-dark); color: #fff; font-size: 14px; }
 .sidebox .pad { padding: 8px 12px; }
 .sidebox dl { margin: 4px 0; } .sidebox dt { font-weight: 600; margin-top: 6px; } .sidebox dd { margin: 0; color: var(--muted); }
 
@@ -51,19 +63,19 @@ th { background: var(--box); white-space: nowrap; }
 .tblwrap { overflow-x: auto; }
 td a.cid, td.nw { white-space: nowrap; }
 @media (max-width: 700px) { td a.cid { white-space: normal; word-break: break-all; } }
-tr.below > td:first-child { border-left: 3px dashed var(--orange); }
-.err { margin: 10px 0; padding: 8px 14px; background: var(--orange-pale); border-left: 3px solid var(--orange); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+tr.below > td:first-child { border-left: 3px dashed var(--warn); }
+.err { margin: 10px 0; padding: 8px 14px; background: var(--warn-pale); border-left: 3px solid var(--warn); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
 .note { color: var(--muted); font-size: 13px; }
 .hint { font-size: 12px; color: var(--muted); }
 .statusline { font-size: 13px; color: var(--muted); margin: 6px 0; }
 .badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 0 7px; border-radius: 9px; background: var(--box); border: 1px solid var(--line); white-space: nowrap; }
-.badge.warn { background: var(--orange-pale); border-color: var(--orange); color: var(--orange-deep); }
+.badge.warn { background: var(--warn-pale); border-color: var(--warn); color: var(--warn-deep); }
 .badge.ok { border-color: var(--ok); color: var(--ok); background: #fff; }
 
 input, select, button { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 3px; background: #fff; max-width: 100%; }
-button { background: var(--orange-dark); color: #fff; border-color: var(--orange-deep); font-weight: 600; cursor: pointer; padding: 4px 12px; }
-button:hover { background: var(--orange-deep); }
-button.plain { background: #fff; color: var(--orange-dark); font-weight: 400; }
+button { background: var(--accent-dark); color: #fff; border-color: var(--accent-deep); font-weight: 600; cursor: pointer; padding: 4px 12px; }
+button:hover { background: var(--accent-deep); }
+button.plain { background: #fff; color: var(--accent-dark); font-weight: 400; }
 button.plain:hover { background: var(--box); }
 button:disabled { opacity: .5; cursor: default; }
 form.inline, .toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
@@ -72,15 +84,15 @@ form.inline, .toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: c
 .kindcheck { font-size: 13px; margin-right: 8px; white-space: nowrap; }
 #q { flex: 1 1 240px; min-width: 0; }
 
-#tabs { display: flex; flex-wrap: wrap; border-bottom: 2px solid var(--orange-dark); margin-top: 14px; }
+#tabs { display: flex; flex-wrap: wrap; border-bottom: 2px solid var(--accent-dark); margin-top: 14px; }
 #tabs a { padding: 4px 12px; margin-right: 3px; background: var(--box); color: var(--ink); border: 1px solid var(--line); border-bottom: none; border-radius: 3px 3px 0 0; font-weight: 600; font-size: 13px; text-decoration: none; }
-#tabs a.active { background: var(--orange-dark); color: #fff; border-color: var(--orange-deep); }
+#tabs a.active { background: var(--accent-dark); color: #fff; border-color: var(--accent-deep); }
 
 .summary { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; font-size: 13px; margin: 8px 0; }
 .summary dt { color: var(--muted); } .summary dd { margin: 0; min-width: 0; word-break: break-word; }
-.cov { border: 1px solid var(--line); border-left: 3px solid var(--orange); background: var(--box); padding: 6px 12px; font-size: 13px; margin: 10px 0; }
+.cov { border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--box); padding: 6px 12px; font-size: 13px; margin: 10px 0; }
 .chip { display: inline-block; margin: 0 4px 3px 0; padding: 0 7px; border: 1px solid var(--line); border-radius: 9px; font-size: 12px; background: #fff; text-decoration: none; color: var(--ink); }
-a.chip:hover { border-color: var(--orange-dark); }
+a.chip:hover { border-color: var(--accent-dark); }
 
 /* decoded values */
 .v-sym { color: var(--sym); font-family: ui-monospace, Menlo, monospace; font-size: 13px; unicode-bidi: isolate; }
@@ -89,7 +101,7 @@ a.chip:hover { border-color: var(--orange-dark); }
 .v-str::before, .v-str::after { content: '"'; color: var(--muted); }
 .v-kw, .v-void { font-style: italic; color: var(--muted); }
 .v-bytes { word-break: break-all; }
-.ctl { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #fff; background: var(--orange-deep); border-radius: 2px; padding: 0 2px; }
+.ctl { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #fff; background: var(--warn-deep); border-radius: 2px; padding: 0 2px; }
 .t { color: #8a8a8a; font-size: 11px; margin-left: 1px; }
 .addrw { white-space: nowrap; }
 .addr { cursor: pointer; }
@@ -108,14 +120,14 @@ details.v[open] > summary > .pv { display: none; }
 .diff .p { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); margin-right: 6px; word-break: break-all; unicode-bidi: isolate; }
 .dold { text-decoration: line-through; opacity: .75; }
 .dnew { font-weight: 700; }
-.arrow { color: var(--orange-dark); margin: 0 5px; font-weight: 700; }
+.arrow { color: var(--accent-dark); margin: 0 5px; font-weight: 700; }
 .side { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
 @media (max-width: 700px) { .side { grid-template-columns: 1fr; } }
 details.raw { font-size: 12px; } details.raw > summary { cursor: pointer; color: var(--muted); list-style: none; white-space: nowrap; }
 details.raw > summary::after { content: " \25b8"; } details.raw[open] > summary::after { content: " \25be"; }
 details.raw code { display: block; white-space: pre-wrap; word-break: break-all; background: var(--box); padding: 4px 6px; margin: 3px 0; max-height: 220px; overflow: auto; }
 .amt { font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 600; }
-.in { color: var(--ok); } .out { color: var(--orange-deep); }
+.in { color: var(--ok); } .out { color: var(--warn-deep); }
 </style>
 </head>
 <body>
@@ -129,8 +141,18 @@ details.raw code { display: block; white-space: pre-wrap; word-break: break-all;
   </div>
 </header>
 
+<nav id="gtabs">
+  <div class="wrap">
+    <a href="#/" data-tab="contracts">Contracts</a>
+    <a href="#/overview" data-tab="overview">Overview</a>
+    <a href="#/admin" data-tab="admin">Admin</a>
+  </div>
+</nav>
+
+<div id="strip"><div class="wrap" id="stripcells"></div></div>
+
 <main class="wrap">
-  <div class="cols" id="view-list">
+  <div id="view-list">
     <div>
       <h1>Registered contracts <span class="note" id="listcount"></span></h1>
       <div class="toolbar">
@@ -154,14 +176,21 @@ details.raw code { display: block; white-space: pre-wrap; word-break: break-all;
         </table>
       </div>
       <button class="plain" id="listmore" hidden>Show 100 more</button>
-      <p class="note" id="nocontracts" hidden>Nothing registered yet — use the Register box to add a contract.</p>
+      <p class="note" id="nocontracts" hidden>Nothing registered yet — use the Admin tab to register a contract.</p>
     </div>
+  </div>
 
-    <aside>
-      <div class="sidebox">
-        <h3>Instance</h3>
-        <div class="pad"><dl id="statusdl"><dd>loading…</dd></dl></div>
-      </div>
+  <div id="view-overview" hidden>
+    <h1>Overview</h1>
+    <div class="sidebox" style="max-width:640px">
+      <h3>Instance</h3>
+      <div class="pad"><dl id="statusdl"><dd>loading…</dd></dl></div>
+    </div>
+  </div>
+
+  <div id="view-admin" hidden>
+    <h1>Admin</h1>
+    <div class="adminboxes">
       <div class="sidebox">
         <h3>Admin token</h3>
         <div class="pad">
@@ -186,7 +215,8 @@ details.raw code { display: block; white-space: pre-wrap; word-break: break-all;
           <div id="regmsg"></div>
         </div>
       </div>
-    </aside>
+    </div>
+    <p class="note">Unregistering lives on each contract's page; data is kept and re-registering resumes.</p>
   </div>
 
   <div id="view-detail" hidden>
@@ -691,9 +721,18 @@ async function refreshStatus() {
       ["Archive leg", s.archive === "unverified" ? "unverified (it proves itself the first time a gap needs healing)" : s.archive],
       ["Started", when(s.started_at)]];
     $("statusdl").replaceChildren(...dl.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, String(v))]));
+    const cells = [[s.cursor_sequence, "cursor (tip " + s.latest_known_ledger + ")"],
+      [Number(s.tip_lag_seconds || 0).toFixed(1) + " s", "tip lag"],
+      [s.ready ? "ready" : "catching up", "state"],
+      [s.pending_backfills, "pending backfills"],
+      [s.gaps_pending_heal != null ? s.gaps_pending_heal + " heal · " + s.deferred_gaps + " deferred" : s.open_gaps, "gaps"],
+      [s.archive, "archive leg"],
+      [s.source_failovers ?? "—", "failovers"]];
+    $("stripcells").replaceChildren(...cells.map(([v, k]) => h("div", { class: "cell" }, h("b", {}, String(v)), k)));
   } catch (e) {
     $("instlabel").textContent = "unreachable";
     $("readydot").className = "dot";
+    $("stripcells").replaceChildren(h("div", { class: "cell" }, h("b", {}, "unreachable"), "status"));
   }
 }
 
@@ -890,7 +929,6 @@ function renderActions(id) {
 }
 
 async function showDetail(id, tab, q, gen, signal) {
-  $("view-list").hidden = true; $("view-detail").hidden = false;
   CURRENT = id;
   $("backlink").href = "#/" + (String(LISTQ) ? "?" + LISTQ : "");
   if (!DETAIL || DETAIL.id !== id) {
@@ -1185,10 +1223,16 @@ $("regbtn").onclick = async () => {
 
 /* ---- routing: only "/" is served, so views live in the hash ---- */
 //   #/?q=…&code=…&type=…      the list
+//   #/overview  #/admin       the other global tabs
 //   #/c/C…[/tab][?filters]    a contract (history?key=<base64> for one key)
 // Each navigation aborts the previous one's fetches and bumps GEN, so a
 // late answer for contract A can never paint over contract B.
 let GEN = 0, ctl = new AbortController();
+const PANES = ["view-list", "view-detail", "view-overview", "view-admin"];
+function showView(id, tab) {
+  for (const v of PANES) $(v).hidden = v !== id;
+  for (const a of document.querySelectorAll("#gtabs a")) a.className = a.dataset.tab === tab ? "on" : "";
+}
 function route() {
   GEN++; ctl.abort(); ctl = new AbortController();
   clearTimeout(qTimer);
@@ -1196,14 +1240,19 @@ function route() {
   const parts = p.split("/").filter(Boolean), q = new URLSearchParams(qs || "");
   if (parts[0] === "c" && strkeyBytes("C", parts[1] || "")) {
     if (!$("view-list").hidden) LIST_Y = window.scrollY;
+    showView("view-detail", "contracts");
     return showDetail(parts[1], parts[2] || "", q, GEN, ctl.signal);
   }
-  const wasDetail = !$("view-detail").hidden;
   CURRENT = null;
-  $("view-detail").hidden = true; $("view-list").hidden = false;
+  if (parts[0] === "overview" || parts[0] === "admin") {
+    if (!$("view-list").hidden) LIST_Y = window.scrollY;
+    return showView("view-" + parts[0], parts[0]);
+  }
+  const wasAway = $("view-list").hidden;
+  showView("view-list", "contracts");
   renderList(parts.length ? LISTQ : q);
   $("listmsg").replaceChildren(parts.length ? h("div", { class: "err" }, "No such page: " + location.hash.slice(0, 80)) : "");
-  if (wasDetail) window.scrollTo(0, LIST_Y);
+  if (wasAway) window.scrollTo(0, LIST_Y);
 }
 window.addEventListener("hashchange", route);
 // "/" jumps to the search box from anywhere.
