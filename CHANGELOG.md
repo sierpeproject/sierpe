@@ -4,6 +4,26 @@ All notable changes to Sierpe are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org).
 
+## [Unreleased]
+
+### Changed
+
+- The embedded UI reorganizes into three global tabs under the brand
+  bar — Contracts, Overview, Admin — with a status strip beneath them
+  that keeps the vital numbers (cursor, tip lag, backfills, gaps,
+  archive leg, failovers) in sight from every section. The permanent
+  right sidebar is gone: the contract list and each contract page get
+  the full width, the instance detail moves to Overview, and the
+  admin-token and register boxes move to Admin. Routes stay in the
+  fragment (`#/overview`, `#/admin`); the server still serves exactly
+  `/`.
+- The embedded UI wears the estuary palette the site adopted with the
+  sierpeproject rebrand: bars, buttons, tabs and links move from orange
+  to the site's greens, and the retired orange family stays on as a
+  dedicated warning color — coverage clamps, below-range row markers,
+  control-character escapes and error boxes — so caveats never blend
+  with the brand color. The favicon wave follows.
+
 ## [1.13.0] - 2026-10-12
 
 ### Added
