@@ -24,6 +24,27 @@ exists it cannot move casually. Even before the tag, treat it that way.
 - **Business time is `closed_at`** in filters and sorts; `ingested_at` never leaks
   into query semantics (rule 8).
 - Admin routes: bearer auth, idempotent, pull-not-push (rule 11).
+- **Presentation parameters never enter cursors.** `xdrFormat` changes how a
+  page is written, not which rows it holds: parse it outside the cursor
+  branch, keep it out of the banned-with-cursor lists and out of the codec,
+  so `cursor=…&xdrFormat=json` works and the cursor minted is the same in
+  both formats (RPC semantics: the client repeats it on every page).
+- **JSON views are additive.** Every base64 ScVal field `f` may get an `fJson`
+  sibling under `xdrFormat=json`; the base64 stays. The default response
+  must not change by a byte — `omitempty` on every `*Json` field, and the
+  guard test that a default body contains no `Json"`. Absent means no value;
+  `null` means a value that could not be rendered (counted in
+  `sierpe_api_xdr_json_failures_total`).
+- **Never serve an unchecked `json.RawMessage`.** `writeJSON` sends the 200
+  before encoding, so one invalid raw value truncates the response to an
+  empty body with status 200. Route every rendering through the
+  `json.Valid` guard in `internal/api/xdrformat.go`.
+- **Only the ScVal JSON shape is promised.** It is pinned byte for byte by
+  `internal/scvaljson/testdata/golden.tsv`, whose expected column comes
+  from the reference (`stellar xdr decode`, RPC's own xdrFormat=json) —
+  never from the encoder. Never render an envelope (ContractEvent,
+  LedgerKey): stellar-xdr's serde for those has already changed between
+  versions.
 
 ## Procedure
 
@@ -37,6 +58,8 @@ exists it cannot move casually. Even before the tag, treat it that way.
    - `docs/METRICS.md` — any new/renamed metric, and whether it should alert.
    - `CHANGELOG.md` `[Unreleased]`.
    - Tests: handler tests for the shape; cursor round-trip test if the codec moved.
+   - A new ScVal-bearing field: its `*Json` sibling, the OpenAPI entry
+     referencing `ScValJson`, and a json-mode handler test.
 4. Update the Grafana dashboard (`deploy/grafana/`) or Gatus config if a metric or
    endpoint they use changed.
 5. Verify live (skill `live-smoke`) for anything that touches paging, cursors or

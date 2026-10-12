@@ -99,7 +99,7 @@ func sampleEvent(id string, ledger uint32) store.Event {
 func newTestAPI(ev *fakeEventReader, cr *fakeContractReader) *httptest.Server {
 	mux := http.NewServeMux()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	NewServer("testnet", ev, cr, log).Register(mux)
+	NewServer("testnet", ev, cr, &fakeAPIMetrics{}, log).Register(mux)
 	return httptest.NewServer(mux)
 }
 
@@ -473,7 +473,7 @@ func (f *fakeStateReader) QueryStateChanges(_ context.Context, _ string, q store
 func newTestAPIWithState(ev *fakeEventReader, cr *fakeContractReader, st *fakeStateReader) *httptest.Server {
 	mux := http.NewServeMux()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	server := NewServer("testnet", ev, cr, log)
+	server := NewServer("testnet", ev, cr, &fakeAPIMetrics{}, log)
 	server.Register(mux)
 	server.RegisterState(mux, st)
 	return httptest.NewServer(mux)

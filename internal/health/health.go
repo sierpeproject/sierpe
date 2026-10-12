@@ -44,6 +44,7 @@ type Metrics struct {
 	GapsHealed           prometheus.Counter
 	HealedLedgers        prometheus.Counter
 	EquivalenceFailures  prometheus.Counter
+	XDRJSONFailures      prometheus.Counter
 	registry             *prometheus.Registry
 }
 
@@ -150,6 +151,10 @@ func NewMetrics() *Metrics {
 			Name: "sierpe_archive_equivalence_failures_total",
 			Help: "Times the archive leg was refused because the captive replay did not match the RPC byte-for-byte. Alert if nonzero.",
 		}),
+		XDRJSONFailures: factory.NewCounter(prometheus.CounterOpts{
+			Name: "sierpe_api_xdr_json_failures_total",
+			Help: "Stored XDR values served as null under xdrFormat=json because they could not be rendered; the base64 is still served. Alert if nonzero.",
+		}),
 		registry: reg,
 	}
 }
@@ -218,6 +223,10 @@ func (m *Metrics) IncMovementsExtracted(n int) { m.Movements.Add(float64(n)) }
 // alerts — which is precisely what keeps the suppression counters
 // meaningful.
 func (m *Metrics) IncForeignUndecodable(n int) { m.ForeignUndecodable.Add(float64(n)) }
+
+// IncXDRJSONFailures counts one value the public API served as null under
+// xdrFormat=json: the data is intact, only its JSON view is missing.
+func (m *Metrics) IncXDRJSONFailures() { m.XDRJSONFailures.Inc() }
 
 // IncBackfillChunks counts one committed backfill chunk.
 func (m *Metrics) IncBackfillChunks() { m.BackfillChunks.Inc() }

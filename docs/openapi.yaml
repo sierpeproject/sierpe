@@ -8,7 +8,13 @@ info:
     and scan-status honesty. Coverage is declared in every events response —
     an empty page always says whether it means "nothing happened" or "not
     indexed yet".
-  version: 0.1.0-m1
+
+    Stored XDR is served as base64. `xdrFormat=json`, the RPC's own
+    parameter, adds a JSON view in the RPC's shape beside every base64
+    ScVal field (see the ScValJson schema). The parameter never changes
+    the default response; movements carry the proven `asset`/`decimals`
+    pair in either format.
+  version: 1.11.0
   license:
     name: Apache-2.0
 servers:
@@ -270,6 +276,7 @@ paths:
             one; repeat it on every page. rawXdr adds the stored
             ContractEvent (base64) to every event. Sierpe extension; the
             default response is unchanged.
+        - { $ref: "#/components/parameters/xdrFormat" }
       responses:
         "200":
           description: One page of events with scan status and coverage.
@@ -300,6 +307,7 @@ paths:
         - name: cursor
           in: query
           schema: { type: string }
+        - { $ref: "#/components/parameters/xdrFormat" }
       responses:
         "200":
           description: One page of live entries.
@@ -335,6 +343,7 @@ paths:
         - name: cursor
           in: query
           schema: { type: string }
+        - { $ref: "#/components/parameters/xdrFormat" }
       responses:
         "200":
           description: One page of changes with scan status and coverage.
@@ -477,6 +486,10 @@ paths:
         event (custom tokens, contracts crediting internal balances), and
         amounts are raw base units of different tokens — never sum across
         `tokenContractId`.
+
+        A row emitted by a Stellar Asset Contract carries `asset` and
+        `decimals` (in either xdrFormat) once the asset it names is proven
+        to hash to the emitter under this instance's network; see Movement.
       parameters:
         - { $ref: "#/components/parameters/contractID" }
         - name: role
@@ -505,6 +518,7 @@ paths:
         - name: cursor
           in: query
           schema: { type: string }
+        - { $ref: "#/components/parameters/xdrFormat" }
       responses:
         "200":
           description: One page of movements with scan status and coverage.
@@ -566,6 +580,24 @@ components:
       required: true
       schema: { type: string }
       description: C... strkey contract address.
+    xdrFormat:
+      name: xdrFormat
+      in: query
+      schema: { type: string, enum: [base64, json], default: base64 }
+      description: |
+        Stellar RPC's parameter, with the same name, values and validation.
+        `json` adds a JSON view beside every base64 ScVal field, named after
+        it with a `Json` suffix: topic/topicJson, value/valueJson,
+        key/keyJson, pre/preJson, post/postJson; a movement's `rawXdr` is
+        rendered as the topicJson/valueJson of the event it holds. The
+        base64 fields stay (RPC drops them), so a json page is a strict
+        superset of the default one, which the parameter never changes
+        (a movement's proven `asset`/`decimals` appear in both formats).
+        See ScValJson for the shape and for absent versus null.
+
+        A presentation parameter: it is allowed beside `cursor` and never
+        encoded in one, so repeat it on every page. Any other value is a
+        400.
 
   responses:
     BadRequest:
@@ -666,6 +698,13 @@ components:
                 by_name:
                   type: object
                   additionalProperties: { type: integer, format: int64 }
+            state:
+              type: object
+              properties:
+                entries:
+                  type: integer
+                  format: int64
+                  description: Live contract-data entries in the snapshot.
 
     Coverage:
       type: object
@@ -712,6 +751,48 @@ components:
             History below this ledger is unreachable from current sources
             (persisted as a gap; the archive leg can heal it).
 
+    ScValJson:
+      description: |
+        One ScVal in the JSON shape Stellar RPC serves under xdrFormat=json:
+        the stellar-xdr serde, identical to `stellar xdr decode --type
+        ScVal --output json` (stellar-xdr 27). Compare as JSON, not as
+        bytes: like RPC, the response escapes `&`, `<` and `>` as
+        `\u0026`, `\u003c` and `\u003e`, which the CLI does not. Only the
+        ScVal shape is promised. void and ledger_key_contract_instance are bare strings;
+        every other value is an object with one key naming its type.
+
+        | type | JSON |
+        |---|---|
+        | void | `"void"` |
+        | bool | `{"bool":true}` |
+        | u32, i32 | `{"u32":7}` — a JSON number |
+        | u64, i64, timepoint, duration | `{"u64":"18446744073709551615"}` — a decimal string |
+        | u128, i128, u256, i256 | `{"i128":"-250000000"}` — a decimal string |
+        | bytes | `{"bytes":"deadbeef"}` — lowercase hex |
+        | string, symbol | `{"symbol":"tw_fund"}` — see escaping below |
+        | vec | `{"vec":[...]}`, or `{"vec":null}` |
+        | map | `{"map":[{"key":K,"val":V}]}`, or `{"map":null}` |
+        | address | `{"address":"G..."}` — strkey G, C, M, B or L |
+        | error | `{"error":{"contract":7}}` or `{"error":{"auth":"invalid_input"}}` |
+        | contract_instance | `{"contract_instance":{"executable":{"wasm":"<hex>"},"storage":[...]}}`; executable is `"stellar_asset"` for a SAC, storage may be null |
+        | ledger_key_contract_instance | `"ledger_key_contract_instance"` |
+        | ledger_key_nonce | `{"ledger_key_nonce":{"nonce":"<i64>"}}` |
+
+        Strings and symbols use escape_bytes, as RPC does: printable ASCII
+        is kept with the backslash doubled, NUL, tab, LF and CR are written
+        `\0 \t \n \r`, and every other byte, valid UTF-8 included, is
+        written `\xNN`. "señor" arrives as the JSON text
+        `"se\\xc3\\xb1or"`. The escaping is lossless: undo it to display
+        the string.
+
+        Absent versus null: a Json field is absent when there is no value
+        (the default xdrFormat, `pre` of a creation, `post` of a removal, a
+        movement without rawXdr), and null when the value exists but could
+        not be rendered — its base64 is still served, and each null is
+        counted in `sierpe_api_xdr_json_failures_total`. Arms the Go SDK
+        already decodes but no released stellar-xdr defines are served as
+        null until one does.
+
     Event:
       type: object
       properties:
@@ -726,7 +807,16 @@ components:
           type: array
           items: { type: string }
           description: Base64 ScVal topics.
+        topicJson:
+          type: array
+          items: { $ref: "#/components/schemas/ScValJson" }
+          description: >
+            xdrFormat=json only. The topics in RPC's JSON shape — always an
+            array, empty for an event without topics.
         value: { type: string, description: Base64 ScVal event data. }
+        valueJson:
+          allOf: [{ $ref: "#/components/schemas/ScValJson" }]
+          description: xdrFormat=json only. The event data in RPC's JSON shape.
         inSuccessfulContractCall:
           type: boolean
           description: Always true — failed transactions are never indexed.
@@ -768,8 +858,16 @@ components:
       type: object
       properties:
         key: { type: string, description: Base64 ScVal entry key. }
+        keyJson:
+          allOf: [{ $ref: "#/components/schemas/ScValJson" }]
+          description: >
+            xdrFormat=json only. The contract-data key as a ScVal — not the
+            LedgerKey that RPC getLedgerEntries renders as its keyJson.
         durability: { type: string, enum: [temporary, persistent] }
         value: { type: string, description: Base64 ScVal entry value. }
+        valueJson:
+          allOf: [{ $ref: "#/components/schemas/ScValJson" }]
+          description: xdrFormat=json only.
         lastModifiedLedger: { type: integer }
         closedAt: { type: string, format: date-time }
 
@@ -793,10 +891,19 @@ components:
         ledgerClosedAt: { type: string, format: date-time }
         contractId: { type: string }
         key: { type: string, description: Base64 ScVal entry key. }
+        keyJson:
+          allOf: [{ $ref: "#/components/schemas/ScValJson" }]
+          description: xdrFormat=json only. The contract-data key as a ScVal.
         durability: { type: string, enum: [temporary, persistent] }
         changeType: { type: string, enum: [created, updated, removed, restored] }
         pre: { type: string, description: Base64 ScVal value before (absent on create). }
+        preJson:
+          allOf: [{ $ref: "#/components/schemas/ScValJson" }]
+          description: xdrFormat=json only; absent wherever pre is.
         post: { type: string, description: Base64 ScVal value after (absent on remove). }
+        postJson:
+          allOf: [{ $ref: "#/components/schemas/ScValJson" }]
+          description: xdrFormat=json only; absent wherever post is.
         txHash: { type: string }
         txIndex: { type: integer }
         opIndex: { type: integer }
@@ -920,6 +1027,22 @@ components:
           type: string
           description: The other side; absent on mint (in) and burn (out).
         amount: { type: string, description: Exact i128 amount in raw token units. }
+        asset:
+          type: string
+          description: >
+            SEP-0011 asset ("native" or CODE:ISSUER) of a token proven to be
+            that asset's Stellar Asset Contract: the asset string the event
+            carries must parse as exactly one asset whose contract id,
+            derived under this instance's network passphrase, is
+            tokenContractId. Present in either xdrFormat; absent whenever
+            that cannot be proven — custom tokens (which may name any asset
+            they like), rows without rawXdr — rather than guessed.
+        decimals:
+          type: integer
+          description: >
+            7, present exactly when asset is: a Stellar Asset Contract wraps
+            a classic asset, whose amounts are int64 stroops. Divide amount
+            by 10^decimals for display.
         rawXdr:
           type: string
           description: >
@@ -933,6 +1056,19 @@ components:
             Hex hash of the transaction the movement's event was emitted
             in. Absent only on rows derived before migration 0013 that the
             tx-hash reconciliation has not reached yet.
+        topicJson:
+          type: array
+          nullable: true
+          items: { $ref: "#/components/schemas/ScValJson" }
+          description: >
+            xdrFormat=json only; absent wherever rawXdr is. The topics of the
+            event in rawXdr. The ContractEvent envelope itself is never
+            rendered: only the ScVal shape is promised. When the stored
+            rawXdr does not decode, the whole array is null (not one
+            element), and so is valueJson.
+        valueJson:
+          allOf: [{ $ref: "#/components/schemas/ScValJson" }]
+          description: xdrFormat=json only; absent wherever rawXdr is. The data of the event in rawXdr.
         ledger: { type: integer }
         ledgerClosedAt: { type: string, format: date-time }
 

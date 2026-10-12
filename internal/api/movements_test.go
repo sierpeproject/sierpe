@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go-stellar-sdk/network"
+
 	"github.com/zkCaleb-dev/sierpe/internal/store"
 )
 
@@ -26,9 +28,9 @@ func (f *fakeMovementReader) QueryMovements(_ context.Context, _ string, q store
 func newTestAPIWithMovements(ev *fakeEventReader, cr *fakeContractReader, mr *fakeMovementReader) *httptest.Server {
 	mux := http.NewServeMux()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	server := NewServer("testnet", ev, cr, log)
+	server := NewServer("testnet", ev, cr, &fakeAPIMetrics{}, log)
 	server.Register(mux)
-	server.RegisterMovements(mux, mr)
+	server.RegisterMovements(mux, mr, network.TestNetworkPassphrase)
 	return httptest.NewServer(mux)
 }
 

@@ -3,6 +3,10 @@
 // stellar#1872): positional topic filters, opaque cursors that encode the
 // whole query, and scan-status honesty — an empty page always says whether
 // it means "nothing happened" or "not indexed yet" (KNOWLEDGE.md P7, P17).
+//
+// Stored XDR is served as base64. With xdrFormat=json (the RPC's own
+// parameter) the endpoints that carry ScVals add a JSON view beside each
+// base64 field, named after it with a Json suffix, in the shape RPC uses.
 package api
 
 import (
@@ -53,12 +57,13 @@ type Server struct {
 	network   string
 	events    eventReader
 	contracts contractReader
+	metrics   apiMetrics
 	log       *slog.Logger
 }
 
 // NewServer wires the public API. All collaborators are required.
-func NewServer(network string, events eventReader, contracts contractReader, log *slog.Logger) *Server {
-	return &Server{network: network, events: events, contracts: contracts, log: log}
+func NewServer(network string, events eventReader, contracts contractReader, metrics apiMetrics, log *slog.Logger) *Server {
+	return &Server{network: network, events: events, contracts: contracts, metrics: metrics, log: log}
 }
 
 // Register mounts the public routes onto mux.
@@ -88,18 +93,23 @@ type coverageInfo struct {
 }
 
 type eventRecord struct {
-	ID                       string   `json:"id"`
-	Type                     string   `json:"type"`
-	Ledger                   uint32   `json:"ledger"`
-	LedgerClosedAt           string   `json:"ledgerClosedAt"`
-	ContractID               string   `json:"contractId"`
-	Topic                    []string `json:"topic"`
-	Value                    string   `json:"value"`
-	InSuccessfulContractCall bool     `json:"inSuccessfulContractCall"`
-	TxHash                   string   `json:"txHash"`
-	TxIndex                  int32    `json:"txIndex"`
-	OpIndex                  int32    `json:"opIndex"`
-	EventName                string   `json:"eventName,omitempty"`
+	ID             string   `json:"id"`
+	Type           string   `json:"type"`
+	Ledger         uint32   `json:"ledger"`
+	LedgerClosedAt string   `json:"ledgerClosedAt"`
+	ContractID     string   `json:"contractId"`
+	Topic          []string `json:"topic"`
+	// TopicJSON and ValueJSON are set only under xdrFormat=json, where
+	// TopicJSON is always an array, even for an event without topics. The
+	// names are RPC's (EventInfo.TopicJSON/ValueJSON).
+	TopicJSON                json.RawMessage `json:"topicJson,omitempty"`
+	Value                    string          `json:"value"`
+	ValueJSON                json.RawMessage `json:"valueJson,omitempty"`
+	InSuccessfulContractCall bool            `json:"inSuccessfulContractCall"`
+	TxHash                   string          `json:"txHash"`
+	TxIndex                  int32           `json:"txIndex"`
+	OpIndex                  int32           `json:"opIndex"`
+	EventName                string          `json:"eventName,omitempty"`
 	// RawXDR is the stored ContractEvent, base64, served only under
 	// include=rawXdr: getEvents has no such field, so the default page must
 	// not change by a byte. It never gets a decoded sibling — stellar-xdr's
@@ -123,6 +133,11 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	contractID := contract.ContractID
 
+	asJSON, err := xdrFormatParam(r.URL.Query())
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	q, err := s.buildQuery(r, contractID)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -178,6 +193,9 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		}
 		if includeRaw {
 			rec.RawXDR = e.RawXDR
+		}
+		if asJSON {
+			rec.TopicJSON, rec.ValueJSON = s.topicsJSON(e.Topics), s.scvalJSON(e.ValueXDR)
 		}
 		resp.Events = append(resp.Events, rec)
 	}

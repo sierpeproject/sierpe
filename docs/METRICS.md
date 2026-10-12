@@ -38,6 +38,7 @@ metric does not ship without a row here (CLAUDE.md verification rules).
 | `sierpe_gaps_healed_total` | counter | Gaps fully healed from the history archives. | Progress signal for the archive leg. |
 | `sierpe_healed_ledgers_total` | counter | Ledgers replayed from the archives and committed by heals. | Heal throughput. |
 | `sierpe_archive_equivalence_failures_total` | counter | Times the archive leg was refused because the captive replay did not match the RPC byte-for-byte. | **Alert if nonzero** — healing is disabled and gaps stay recorded; the replay configuration needs attention. |
+| `sierpe_api_xdr_json_failures_total` | counter | Stored XDR values the read API served as `null` under `xdrFormat=json` because they could not be rendered. One per null: a topic counts on its own, and a movement whose stored event does not decode counts twice (`topicJson` and `valueJson`). The base64 beside each null is still served. | **Alert if nonzero** — the data is intact, only its JSON view is missing. Either the SDK decodes an arm no released stellar-xdr defines yet (a protocol upgrade ran ahead of the encoder, which refuses to guess a shape) or a stored row is corrupt; the server log states which. |
 
 The suppression counters exist because of CLAUDE.md rule 6: a silent guard
 turns an invisible failure into another invisible failure. Anything Sierpe
