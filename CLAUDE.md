@@ -125,6 +125,12 @@ Hard rules:
   warning color) and a global-tabs layout — Contracts, Overview, Admin —
   with an always-visible status strip; the 300px sidebar is gone.
   Presentation only: no API change, hence the patch version.
+- **v1.13.2 released (2026-11-24): Protocol 30.** `go-stellar-sdk` 0.8.0
+  decodes post-upgrade ledgers (0.7.2 held the cursor at mainnet ledger
+  65633433), the `-full` image pins stellar-core 30.0.0 so the archive
+  leg can replay protocol 29 and 30 ranges, and the toolchain moves to
+  go1.26.11 with govulncheck clean again. `xdrFormat=json` refuses the
+  new muxed-contract address arm until the reference CLI renders it.
 - Roadmap: rederive subcommand (#88), TTL evictions (#89), TTL liveness
   (#90), batch state query, getEvents v2 facade; v2 push delivery.
 
