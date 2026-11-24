@@ -27,7 +27,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
 #
 # Every SDF core image reports "running non-release version", their
 # `stable` tag included; it is how they build them, not a preview build.
-FROM stellar/stellar-core:28.0.1-3508.947aad841.noble
+FROM stellar/stellar-core:30.0.0-3642.0e49751aa.noble
 # See Dockerfile: the source label is what links the package to the repo.
 LABEL org.opencontainers.image.source="https://github.com/zkCaleb-dev/sierpe" \
       org.opencontainers.image.description="Self-hosted Stellar contract indexer, with stellar-core for the archive leg" \

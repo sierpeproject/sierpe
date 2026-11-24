@@ -4,7 +4,7 @@ All notable changes to Sierpe are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org).
 
-## [Unreleased]
+## [1.13.2] - 2026-11-24
 
 ### Fixed
 
@@ -19,6 +19,12 @@ All notable changes to Sierpe are documented here. The format follows
 
 ### Changed
 
+- The `-full` image moves its pinned captive core from stellar-core
+  28.0.1 to 30.0.0 (`30.0.0-3642.0e49751aa.noble`). Core 28 stops at
+  protocol 28, so it could not replay the archive-leg ranges closed under
+  protocol 29 (mainnet, October 2026) or 30. It is a change to the replay
+  engine: the equivalence gate re-proves the new build against the RPC on
+  its first heal.
 - `xdrFormat=json` refuses the muxed-contract address arm the new SDK
   introduces, the same way it refuses the external-ref executable: no
   reference rendering exists yet in the pinned stellar-cli, so the JSON
