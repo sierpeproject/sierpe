@@ -4,6 +4,33 @@ All notable changes to Sierpe are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- Ledger decoding after the Protocol 30 upgrade: `go-stellar-sdk` 0.7.2 →
+  0.8.0. Every post-upgrade ledger carries a `StellarValue` arm the older
+  SDK cannot decode, so ingestion held its cursor at the upgrade ledger
+  (mainnet 65633433, 2026-11-23 17:00 UTC), retrying `'3' is not a valid
+  StellarValueType enum value` every 30 s, and backfills queued behind it
+  never started. The stall was the correct behavior — no ledger skipped,
+  nothing suppressed — and catch-up resumes from the held cursor once the
+  new binary is deployed.
+
+### Changed
+
+- `xdrFormat=json` refuses the muxed-contract address arm the new SDK
+  introduces, the same way it refuses the external-ref executable: no
+  reference rendering exists yet in the pinned stellar-cli, so the JSON
+  sibling is withheld rather than guessed. The base64 value is unaffected.
+
+### Security
+
+- Go toolchain 1.26.9 → 1.26.11 (`net/http` GO-2026-6859, `crypto/x509`
+  GO-2026-6809), `go.opentelemetry.io/otel` modules 1.45.0 → 1.47.0
+  (GO-2026-6974) and `klauspost/compress` 1.19.1 → 1.20.2 (GO-2026-6865).
+  `govulncheck` reports no reachable vulnerability again.
+
 ## [1.13.1] - 2026-10-12
 
 ### Changed

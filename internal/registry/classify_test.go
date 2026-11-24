@@ -117,7 +117,7 @@ func specEntryBytes(t *testing.T, entries ...xdr.ScSpecEntry) []byte {
 func eventEntry(name string) xdr.ScSpecEntry {
 	return xdr.ScSpecEntry{
 		Kind:    xdr.ScSpecEntryKindScSpecEntryEventV0,
-		EventV0: &xdr.ScSpecEventV0{Name: xdr.ScSymbol(name)},
+		EventV0: &xdr.ScSpecEventV0{Name: name},
 	}
 }
 
