@@ -24,6 +24,13 @@ All notable changes to Sierpe are documented here. The format follows
   reference rendering exists yet in the pinned stellar-cli, so the JSON
   sibling is withheld rather than guessed. The base64 value is unaffected.
 
+### Security
+
+- Go toolchain 1.26.9 → 1.26.11 (`net/http` GO-2026-6859, `crypto/x509`
+  GO-2026-6809), `go.opentelemetry.io/otel` modules 1.45.0 → 1.47.0
+  (GO-2026-6974) and `klauspost/compress` 1.19.1 → 1.20.2 (GO-2026-6865).
+  `govulncheck` reports no reachable vulnerability again.
+
 ## [1.13.1] - 2026-10-12
 
 ### Changed
