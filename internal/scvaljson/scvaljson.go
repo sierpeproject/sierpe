@@ -251,6 +251,10 @@ func address(a xdr.ScAddress) (string, error) {
 		return a.ClaimableBalanceId.EncodeToStrkey()
 	case xdr.ScAddressTypeScAddressTypeLiquidityPool:
 		return strkey.Encode(strkey.VersionByteLiquidityPool, a.LiquidityPoolId[:])
+	case xdr.ScAddressTypeScAddressTypeMuxedContract:
+		// Protocol 30 arm. The pinned reference CLI cannot decode it yet, so
+		// there is no rendering to match: refuse it until one defines it.
+		return "", fmt.Errorf("%w: address type %d", errUnsupported, a.Type)
 	}
 	return "", fmt.Errorf("scvaljson: unknown address type %d", a.Type)
 }

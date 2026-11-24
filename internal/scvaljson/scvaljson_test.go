@@ -181,7 +181,16 @@ func TestEveryAddressAndErrorKindIsHandled(t *testing.T) {
 			continue
 		}
 		a := randomAddress(r, xdr.ScAddressType(i))
-		if _, err := address(a); err != nil {
+		_, err := address(a)
+		// The muxed-contract arm has no reference rendering yet: it must be
+		// refused, never guessed.
+		if a.Type == xdr.ScAddressTypeScAddressTypeMuxedContract {
+			if !errors.Is(err, errUnsupported) {
+				t.Errorf("address type %d: err = %v, want the refusal", i, err)
+			}
+			continue
+		}
+		if err != nil {
 			t.Errorf("address type %d: %v", i, err)
 		}
 	}
@@ -228,6 +237,8 @@ func randomAddress(r *rand.Rand, typ xdr.ScAddressType) xdr.ScAddress {
 	case xdr.ScAddressTypeScAddressTypeLiquidityPool:
 		id := xdr.PoolId(raw)
 		a.LiquidityPoolId = &id
+	case xdr.ScAddressTypeScAddressTypeMuxedContract:
+		a.MuxedContract = &xdr.MuxedContract{Id: xdr.Uint64(r.Uint64()), ContractId: xdr.ContractId(raw)}
 	}
 	return a
 }
